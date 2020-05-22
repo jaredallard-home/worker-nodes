@@ -1,0 +1,22 @@
+{
+  "runArgs": [
+    "--privileged", 
+    "--cap-add=NET_ADMIN", 
+    "--cap-add=SYS_MODULE", 
+    // Uncomment to enable operating systems outside of LinuxKit
+    //"--mount=type=bind,source=/lib/modules,target=/lib/modules"
+
+    // LinuxKit Support
+    "--mount=type=bind,source=/lib/modules,target=/lib/modules_src"
+  ],
+  // "postCreateCommand": "",
+  // "initializeCommand": "/usr/bin/setup-wireguard",
+  "overrideCommand": false,
+  "build": {
+    "dockerfile": "../Dockerfile.dev",
+    "args": {
+      "DOCKER_FOR_MAC_KERNEL_VERSION": "$(docker run --rm --device=/dev/sr0 quay.io/steigr/docker-for-desktop-get-kernel-image:latest)"
+    }
+  },
+  "extensions": ["ms-vscode.Go"]
+}

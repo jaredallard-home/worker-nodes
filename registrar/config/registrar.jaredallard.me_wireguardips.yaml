@@ -1,0 +1,62 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.3.0
+  creationTimestamp: null
+  name: wireguardips.registrar.jaredallard.me
+spec:
+  group: registrar.jaredallard.me
+  names:
+    kind: WireguardIP
+    listKind: WireguardIPList
+    plural: wireguardips
+    singular: wireguardip
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            deviceRef:
+              description: DeviceRef is the device this IP has been assigned to.
+              type: string
+            ipAddress:
+              description: IPAddress of this Wireguard IP Address. Equal to the name.
+              type: string
+          required:
+          - deviceRef
+          - ipAddress
+          type: object
+        status:
+          properties:
+            active:
+              description: Active denotes if this IP is being used.
+              type: boolean
+          required:
+          - active
+          type: object
+      required:
+      - spec
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

@@ -1,0 +1,66 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.3.0
+  creationTimestamp: null
+  name: wireguardippools.registrar.jaredallard.me
+spec:
+  group: registrar.jaredallard.me
+  names:
+    kind: WireguardIPPool
+    listKind: WireguardIPPoolList
+    plural: wireguardippools
+    singular: wireguardippool
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            cidr:
+              description: CIDR for this block.
+              type: string
+          required:
+          - cidr
+          type: object
+        status:
+          properties:
+            created:
+              description: Created denotes if this pool has been created and is active
+              type: boolean
+            secretRef:
+              description: SecretRef is the secret that contains the wireguard private key that powers that IP pool
+              type: string
+            usedAddresses:
+              description: UsedAddresses is the number of IP address currently being used in this pool
+              type: integer
+          required:
+          - created
+          - secretRef
+          - usedAddresses
+          type: object
+      required:
+      - spec
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

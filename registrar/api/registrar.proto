@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package api;
+
+option go_package = "github.com/getoutreach/authz/api";
+
+message RegisterRequest {
+  // ID is used to correlate devices. This will be
+  // returned from an initial register request.
+  string id = 1;
+}
+
+message RegisterResponse {
+  // ID becomes this device's unique ID
+  string id = 1;
+
+  // Key is the wireguard key that has been generated for this device.
+  string key = 2;
+
+  // RancherToken is the token used to register the node with Rancher.
+  string rancher_token = 3;
+}
+
+// Registrar is the registration service for new nodes
+service Registrar {
+  // Define your grpc service interface here
+  rpc Register(RegisterRequest) returns (RegisterResponse) {}
+}
