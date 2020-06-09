@@ -7,6 +7,8 @@ type DeviceSpec struct {
 	// this device
 	// +kubebuilder:validation:Required
 	SecretRef string `json:"secretRef"`
+	// +kubebuilder:validation:Required
+	WireguardIPRef string `json:"wireguardIPRef"`
 }
 
 type DeviceStatus struct {

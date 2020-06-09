@@ -23,6 +23,7 @@ require (
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200515170644-ec7f26be9d9e
 	google.golang.org/appengine v1.6.6 // indirect
 	google.golang.org/grpc v1.29.1
+	google.golang.org/protobuf v1.23.0
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 	k8s.io/api v0.18.3
 	k8s.io/apimachinery v0.18.3

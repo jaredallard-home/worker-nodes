@@ -59,6 +59,27 @@ func NewServer(ctx context.Context) (*Server, error) {
 	}
 
 	err = s.w.StartServer(pool)
+
+	if err := s.w.Flush(ctx); err != nil {
+		log.Errorf("Failed to flush wireguard, issues may occur: %v", err)
+	}
+
+	// TODO(jaredallard): default namespace hardcode
+	// TODO(jaredallard): move this out and support pagination
+	// download all of the wireguard peers and insert them into our devices
+	ips, err := s.k.RegistrarV1Alpha1Client().WireguardIPs("default").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		log.Warnf("failed to fetch peers from kubernetes: %v", err)
+	}
+	for _, ip := range ips.Items {
+		_, err := s.w.Register(ctx, &ip)
+		if err != nil {
+			log.Errorf("failed to add peer: %v", err)
+		} else {
+			log.WithFields(log.Fields{"ip": ip.Spec.IPAdress, "device": ip.Spec.DeviceRef}).
+				Infof("added peer")
+		}
+	}
 	return s, err
 }
 
@@ -124,7 +145,7 @@ func (s *Server) createDevice(ctx context.Context, namespace string, r *api.Regi
 	}
 
 	// register in wireguard
-	conf, err := s.w.Register(wgip)
+	conf, err := s.w.Register(ctx, wgip)
 	if err != nil {
 		return errors.Wrap(err, "failed to add device to wireguard")
 	}
@@ -148,7 +169,8 @@ func (s *Server) createDevice(ctx context.Context, namespace string, r *api.Regi
 			Name: r.Id,
 		},
 		Spec: registrar.DeviceSpec{
-			SecretRef: r.Id,
+			SecretRef:      r.Id,
+			WireguardIPRef: wgip.ObjectMeta.Name,
 		},
 		Status: registrar.DeviceStatus{
 			Registered: true,
@@ -205,7 +227,14 @@ func (s *Server) Register(ctx context.Context, r *api.RegisterRequest) (*api.Reg
 		return nil, errors.Wrap(err, "failed to get device secret")
 	}
 
+	wgip, err := s.k.RegistrarV1Alpha1Client().WireguardIPs(namespace).
+		Get(ctx, d.Spec.WireguardIPRef, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get device ip address")
+	}
+
 	resp.Key = string(sec.Data["wireguard-key"])
+	resp.IpAddress = wgip.Spec.IPAdress
 
 	return resp, nil
 }

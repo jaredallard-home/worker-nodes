@@ -19,20 +19,28 @@ spec:
     openAPIV3Schema:
       properties:
         apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
           type: string
         kind:
-          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
           type: string
         metadata:
           type: object
         spec:
           properties:
             secretRef:
-              description: SecretRef is the secret that contains all secret information for this device
+              description: SecretRef is the secret that contains all secret information
+                for this device
+              type: string
+            wireguardIPRef:
               type: string
           required:
           - secretRef
+          - wireguardIPRef
           type: object
         status:
           properties:
@@ -40,7 +48,8 @@ spec:
               description: PublicKey is the wireguard public key for this device
               type: string
             registered:
-              description: Registered denotes wether or not this device is considered as being registered or not.
+              description: Registered denotes wether or not this device is considered
+                as being registered or not.
               type: boolean
           required:
           - publicKey

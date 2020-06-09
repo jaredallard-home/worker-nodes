@@ -19,6 +19,9 @@ message RegisterResponse {
 
   // RancherToken is the token used to register the node with Rancher.
   string rancher_token = 3;
+
+  // IPAddress is the IP that this node should be running as
+  string ip_address = 4;
 }
 
 // Registrar is the registration service for new nodes

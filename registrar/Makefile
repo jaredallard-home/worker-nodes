@@ -2,7 +2,7 @@
 GO             ?= go
 GOIMPORTS      ?= goimports
 JSONNETFMT     ?= jsonnetfmt
-PKG            := $(GO) mod vendor
+PKG            := $(GO) mod download
 APP_VERSION    := 1.0.0-$(shell git rev-parse HEAD)
 LDFLAGS        := -w -s
 GOFLAGS        :=

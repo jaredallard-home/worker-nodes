@@ -3,3 +3,7 @@ services:
   registrar:
     build: ./registrar
     privileged: true
+  fwupd:
+    build: ./fwupd
+    privileged: true
+    pid: host
