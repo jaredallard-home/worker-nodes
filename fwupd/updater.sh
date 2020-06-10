@@ -26,6 +26,14 @@ else
   cp -rv /boot/{pieeprom.sig,pieeprom.upd,recovery.bin,vl805.bin,vl805.sig} "/proc/$(pgrep balenad)/root/mnt/boot/"
 
   echo "rebooting host device in 20s"
+  sleep 20
+  DBUS_SYSTEM_BUS_ADDRESS=unix:path=/host/run/dbus/system_bus_socket \
+  dbus-send \
+  --system \
+  --print-reply \
+  --dest=org.freedesktop.systemd1 \
+  /org/freedesktop/systemd1 \
+  org.freedesktop.systemd1.Manager.Reboot
 fi
 
 exec sleep infinity

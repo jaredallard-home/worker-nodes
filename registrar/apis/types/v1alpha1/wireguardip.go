@@ -6,6 +6,9 @@ type WireguardIPSpec struct {
 	// DeviceRef is the device this IP has been assigned to.
 	DeviceRef string `json:"deviceRef"`
 
+	// PoolRef is the wireguardIPPool that this IP is in
+	PoolRef string `json:"poolRef"`
+
 	// IPAddress of this Wireguard IP Address. Equal to the name.
 	IPAdress string `json:"ipAddress"`
 }

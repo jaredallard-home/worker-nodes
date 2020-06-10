@@ -38,9 +38,13 @@ spec:
             ipAddress:
               description: IPAddress of this Wireguard IP Address. Equal to the name.
               type: string
+            poolRef:
+              description: PoolRef is the wireguardIPPool that this IP is in
+              type: string
           required:
           - deviceRef
           - ipAddress
+          - poolRef
           type: object
         status:
           properties:

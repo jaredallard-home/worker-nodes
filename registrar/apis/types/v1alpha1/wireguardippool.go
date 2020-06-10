@@ -15,6 +15,9 @@ type WireguardIPPoolStatus struct {
 	// that powers that IP pool
 	SecretRef string `json:"secretRef"`
 
+	// PublicKey is the key of the server powering this IP Pool
+	PublicKey string `json:"publicKey"`
+
 	// UsedAddresses is the number of IP address currently being used
 	// in this pool
 	UsedAddresses int `json:"usedAddresses"`

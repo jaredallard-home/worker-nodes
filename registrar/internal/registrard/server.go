@@ -106,7 +106,7 @@ func (s *Server) getCIDR(ctx context.Context, namespace string) (*net.IPNet, *re
 	return ipnet, &pools.Items[0], nil
 }
 
-func (s *Server) allocateIP(ctx context.Context, namespace string) (net.IP, error) {
+func (s *Server) allocateIP(ctx context.Context, namespace string) (net.IP, *registrar.WireguardIPPool, error) {
 	ipnet, pool, err := s.getCIDR(ctx, namespace)
 
 	// TODO(jaredallard): we should not do a blind +1/2, we should recycle unused IP addresses
@@ -119,14 +119,14 @@ func (s *Server) allocateIP(ctx context.Context, namespace string) (net.IP, erro
 
 	_, err = s.k.RegistrarV1Alpha1Client().WireguardIPPools(pool.Namespace).Update(ctx, pool)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to update usedAddresses on ip pool")
+		return nil, nil, errors.Wrap(err, "failed to update usedAddresses on ip pool")
 	}
 
-	return ip, err
+	return ip, pool, err
 }
 
 func (s *Server) createDevice(ctx context.Context, namespace string, r *api.RegisterRequest) error {
-	ip, err := s.allocateIP(ctx, namespace)
+	ip, pool, err := s.allocateIP(ctx, namespace)
 	if err != nil {
 		return errors.Wrap(err, "failed to allocate IP address")
 	}
@@ -137,6 +137,7 @@ func (s *Server) createDevice(ctx context.Context, namespace string, r *api.Regi
 		},
 		Spec: registrar.WireguardIPSpec{
 			DeviceRef: r.Id,
+			PoolRef:   pool.ObjectMeta.Name,
 			IPAdress:  ip.String(),
 		},
 		Status: registrar.WireguardIPStatus{
@@ -233,8 +234,15 @@ func (s *Server) Register(ctx context.Context, r *api.RegisterRequest) (*api.Reg
 		return nil, errors.Wrap(err, "failed to get device ip address")
 	}
 
+	wgp, err := s.k.RegistrarV1Alpha1Client().WireguardIPPools(namespace).
+		Get(ctx, wgip.Spec.PoolRef, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get device ip pool")
+	}
+
 	resp.Key = string(sec.Data["wireguard-key"])
 	resp.IpAddress = wgip.Spec.IPAdress
+	resp.PublicKey = wgp.Status.PublicKey
 
 	return resp, nil
 }

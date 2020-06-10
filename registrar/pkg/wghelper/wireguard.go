@@ -79,8 +79,55 @@ func NewWireguard(k *registrar.RegistrarClientset) (*Wireguard, error) {
 	return resp, nil
 }
 
+func (w *Wireguard) StartClient(endpoint string, ourIP string, k wgtypes.Key, pubk wgtypes.Key) error {
+	ip, _, err := net.ParseCIDR(ourIP + "/32")
+	if err != nil {
+		return errors.Wrap(err, "failed to parse wireguard ip address")
+	}
+
+	udpAddr, err := net.ResolveUDPAddr("udp", "172.92.139.101:51820")
+	if err != nil {
+		return errors.Wrap(err, "failed to resolve endpoint address")
+	}
+
+	pki := time.Duration(5 * time.Second)
+	_, globalCidr, _ := net.ParseCIDR("0.0.0.0/0")
+	peer := &wgtypes.PeerConfig{
+		PublicKey:         pubk,
+		UpdateOnly:        false,
+		ReplaceAllowedIPs: true,
+		AllowedIPs:        []net.IPNet{*globalCidr},
+		Endpoint:          udpAddr,
+		// Allows this peer to survive when running behind NAT
+		PersistentKeepaliveInterval: &pki,
+	}
+
+	// add the peer to our device
+	err = w.w.ConfigureDevice(w.device.Name, wgtypes.Config{
+		PrivateKey: &k,
+
+		Peers:        []wgtypes.PeerConfig{*peer},
+		ReplacePeers: true,
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to configure wireguard device")
+	}
+
+	err = netlink.AddrReplace(w.l, &netlink.Addr{
+		IPNet: &net.IPNet{
+			IP:   ip,
+			Mask: net.IPv4bcast.DefaultMask(),
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to set ip address on wireguard interface")
+	}
+
+	err = netlink.LinkSetUp(w.l)
+	return errors.Wrap(err, "failed to set link to up")
+}
+
 func (w *Wireguard) StartServer(ipool *v1alpha1.WireguardIPPool) error {
-	// TODO(jaredallard): better way to do this?
 	if w.device.PrivateKey.String() == "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" {
 		log.Info("failed to find initialized device, creating new server")
 		if err := w.initServer(ipool); err != nil {
@@ -164,6 +211,7 @@ func (w *Wireguard) initServer(ipool *v1alpha1.WireguardIPPool) error {
 
 		ipool.Status.SecretRef = secretName
 		ipool.Status.Created = true
+		ipool.Status.PublicKey = privk.PublicKey().String()
 
 		_, err = w.k.RegistrarV1Alpha1Client().WireguardIPPools("default").Update(context.TODO(), ipool)
 		if err != nil {
@@ -182,7 +230,9 @@ func (w *Wireguard) initServer(ipool *v1alpha1.WireguardIPPool) error {
 	}
 
 	// set our server's private key
+	port := 51820
 	err = w.w.ConfigureDevice(w.device.Name, wgtypes.Config{
+		ListenPort: &port,
 		PrivateKey: &privk,
 	})
 	if err != nil {
@@ -230,11 +280,11 @@ func (w *Wireguard) Register(ctx context.Context, ip *v1alpha1.WireguardIP) (*wg
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create cidr from ip address")
 	}
+	cidr.IP = net.ParseIP(ip.Spec.IPAdress)
 
 	log.WithContext(ctx).WithFields(log.Fields{"ip": ip.Spec.IPAdress}).Info("adding wireguard peer")
 	peer := &wgtypes.PeerConfig{
 		PublicKey:         privk.PublicKey(),
-		PresharedKey:      &privk,
 		UpdateOnly:        false,
 		ReplaceAllowedIPs: true,
 		// Allows this peer to survive when running behind NAT

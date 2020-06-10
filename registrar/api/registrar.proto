@@ -22,6 +22,9 @@ message RegisterResponse {
 
   // IPAddress is the IP that this node should be running as
   string ip_address = 4;
+
+  // PublicKey is the server public key
+  string public_key = 5;
 }
 
 // Registrar is the registration service for new nodes

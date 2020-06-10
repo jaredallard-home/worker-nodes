@@ -43,6 +43,9 @@ spec:
             created:
               description: Created denotes if this pool has been created and is active
               type: boolean
+            publicKey:
+              description: PublicKey is the key of the server powering this IP Pool
+              type: string
             secretRef:
               description: SecretRef is the secret that contains the wireguard private
                 key that powers that IP pool
@@ -53,6 +56,7 @@ spec:
               type: integer
           required:
           - created
+          - publicKey
           - secretRef
           - usedAddresses
           type: object

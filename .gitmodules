@@ -1,0 +1,3 @@
+[submodule "wireguard-balena"]
+	path = wireguard-balena
+	url = git@github.com:jaredallard-home/wireguard-balena-rpi
