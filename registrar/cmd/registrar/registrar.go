@@ -11,8 +11,8 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	dockerclient "github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/mount"
 	"github.com/jaredallard-home/worker-nodes/registrar/api"
 	"github.com/jaredallard-home/worker-nodes/registrar/pkg/wghelper"
 	"github.com/pkg/errors"
