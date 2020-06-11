@@ -20,4 +20,4 @@ RUN apk add --no-cache ca-certificates
 
 COPY --from=build /src/registrard/bin/* /usr/local/bin/
 
-ENTRYPOINT [ "/usr/local/bin/registrard" ]
+CMD [ "/usr/local/bin/registrard" ]

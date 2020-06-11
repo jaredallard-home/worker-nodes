@@ -12,6 +12,8 @@ services:
     restart: no
     build: ./wireguard-balena
     privileged: true
+    labels:
+      io.balena.features.sysfs: '1'
   
   # Firmware updater
   fwupd:
