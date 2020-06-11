@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
 	dockerclient "github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/mount"
 	"github.com/jaredallard-home/worker-nodes/registrar/api"
 	"github.com/jaredallard-home/worker-nodes/registrar/pkg/wghelper"
 	"github.com/pkg/errors"
@@ -144,41 +145,56 @@ func main() {
 			}
 			// cli.ImagePull(ctx, dockerImage, types.ImagePullOptions{})
 
-			cont, err := cli.ContainerCreate(
-				ctx,
-				&container.Config{
-					Image: dockerImage,
-					Cmd: []string{
-						"--server",
-						rancherHost,
-						"--token",
-						resp.RancherToken,
-						"--worker",
-					},
-				},
-				&container.HostConfig{
-					Privileged: true,
-					Mounts: []mount.Mount{
-						{
-							Source: "/etc/kubernetes",
-							Target: "/etc/kubernetes",
-						},
-						{
-							Source: "/var/run",
-							Target: "/var/run",
+			if _, err := cli.ContainerInspect(ctx, "rancher-agent"); err != nil {
+				log.WithError(err).Info("creating rancher-agent")
+				cmd := exec.Command("docker", "pull", dockerImage)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				err := cmd.Run()
+				if err != nil {
+					return errors.Wrap(err, "failed to pull image")
+				}
+
+				cont, err := cli.ContainerCreate(
+					ctx,
+					&container.Config{
+						Image: dockerImage,
+						Cmd: []string{
+							"--server",
+							rancherHost,
+							"--token",
+							resp.RancherToken,
+							"--worker",
 						},
 					},
-					NetworkMode: "host",
-					RestartPolicy: container.RestartPolicy{
-						Name:              "unless-stopped",
-						MaximumRetryCount: -1,
-					},
-				}, nil, "")
-			if err != nil {
-				return errors.Wrap(err, "failed to create rancher agent container")
+					&container.HostConfig{
+						Privileged: true,
+
+						Mounts: []mount.Mount{
+							{
+								Source: "/etc/kubernetes",
+								Target: "/etc/kubernetes",
+							},
+							{
+								Source: "/var/run",
+								Target: "/var/run",
+							},
+						},
+						NetworkMode: "host",
+						RestartPolicy: container.RestartPolicy{
+							Name:              "unless-stopped",
+							MaximumRetryCount: -1,
+						},
+					}, nil, "rancher-agent")
+				if err != nil {
+					return errors.Wrap(err, "failed to create rancher agent container")
+				}
+
+				// start the container
+				return cli.ContainerStart(ctx, cont.ID, types.ContainerStartOptions{})
 			}
 
-			return cli.ContainerStart(ctx, cont.ID, types.ContainerStartOptions{})
+			return nil
 		},
 	}
 
