@@ -8,6 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
+	dockerclient "github.com/docker/docker/client"
 	"github.com/jaredallard-home/worker-nodes/registrar/api"
 	"github.com/jaredallard-home/worker-nodes/registrar/pkg/wghelper"
 	"github.com/pkg/errors"
@@ -38,6 +42,17 @@ func main() {
 				EnvVar: "REGISTRARD_HOST",
 				Value:  "127.0.0.1:8000",
 			},
+			cli.StringFlag{
+				Name:   "rancher-endpoint",
+				Usage:  "Rancher Endpoint",
+				EnvVar: "RANCHER_HOST",
+				Value:  "https://rancher.tritonjs.com",
+			},
+			cli.StringFlag{
+				Name:   "wireguard-endpoint",
+				Usage:  "Wireguard server endpoint",
+				EnvVar: "WIREGUARD_HOST",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			if !c.Bool("skip-wireguard-check") {
@@ -53,7 +68,15 @@ func main() {
 			}
 
 			host := c.String("registrard-host")
-			log.WithFields(log.Fields{"host": host}).Info("registering device with registrar")
+			wireguardHost := c.String("wireguard-endpoint")
+			rancherHost := c.String("rancher-endpoint")
+
+			if wireguardHost == "" {
+				wireguardHost = host
+			}
+
+			log.WithFields(log.Fields{"host": host, "wireguard": wireguardHost, "rancher": rancherHost}).
+				Info("registering device with registrar")
 
 			confDir := "/etc/registrar"
 			ipConfDir := filepath.Join(confDir, "id")
@@ -108,7 +131,54 @@ func main() {
 				return errors.Wrap(err, "failed to create wireguard device")
 			}
 
-			return w.StartClient(host, resp.IpAddress, k, serverPub)
+			err = w.StartClient(wireguardHost, resp.IpAddress, k, serverPub)
+			if err != nil {
+				return errors.Wrap(err, "failed to start wireguard client")
+			}
+
+			// TODO(jaredallard): get this from the server
+			dockerImage := "rancher/rancher-agent:v2.4.4"
+			cli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv)
+			if err != nil {
+				return errors.Wrap(err, "failed to create docker client")
+			}
+			// cli.ImagePull(ctx, dockerImage, types.ImagePullOptions{})
+
+			cont, err := cli.ContainerCreate(
+				ctx,
+				&container.Config{
+					Image: dockerImage,
+					Cmd: []string{
+						"--server",
+						rancherHost,
+						"--token",
+						resp.RancherToken,
+						"--worker",
+					},
+				},
+				&container.HostConfig{
+					Privileged: true,
+					Mounts: []mount.Mount{
+						{
+							Source: "/etc/kubernetes",
+							Target: "/etc/kubernetes",
+						},
+						{
+							Source: "/var/run",
+							Target: "/var/run",
+						},
+					},
+					NetworkMode: "host",
+					RestartPolicy: container.RestartPolicy{
+						Name:              "unless-stopped",
+						MaximumRetryCount: -1,
+					},
+				}, nil, "")
+			if err != nil {
+				return errors.Wrap(err, "failed to create rancher agent container")
+			}
+
+			return cli.ContainerStart(ctx, cont.ID, types.ContainerStartOptions{})
 		},
 	}
 
