@@ -3,6 +3,7 @@ services:
   # Kubernetes and Wireguard initialization platform
   registrar:
     restart: 'on-failure'
+    command: registrar
     build: ./registrar
     privileged: true
   
