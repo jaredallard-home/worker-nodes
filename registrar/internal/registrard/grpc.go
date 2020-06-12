@@ -3,11 +3,13 @@ package registrard
 import (
 	"context"
 	"net"
+	"os"
 	"strconv"
 
 	"github.com/jaredallard-home/worker-nodes/registrar/api"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 type GRPCService struct {
@@ -28,7 +30,19 @@ func (s *GRPCService) Run(ctx context.Context) error {
 		return err
 	}
 
-	s.srv = grpc.NewServer()
+	serverOpts := make([]grpc.ServerOption, 0)
+	if os.Getenv("REGISTRARD_ENABLE_TLS") != "" {
+		pem := os.Getenv("REGISTRARD_PEM_FILEPATH")
+		key := os.Getenv("REGISTRARD_KEY_FILEPATH")
+		creds, err := credentials.NewServerTLSFromFile(pem, key)
+		if err != nil {
+			log.WithError(err).Fatalf("failed to setup tls")
+		}
+
+		serverOpts = append(serverOpts, grpc.Creds(creds))
+	}
+
+	s.srv = grpc.NewServer(serverOpts...)
 	api.RegisterRegistrarServer(s.srv, server)
 
 	// Note: .Serve() blocks

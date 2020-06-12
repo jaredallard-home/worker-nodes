@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -20,6 +21,7 @@ import (
 	"github.com/urfave/cli"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 func main() {
@@ -93,15 +95,23 @@ func main() {
 				id = string(b)
 			}
 
+			grpcOption := make([]grpc.DialOption, 0)
+			if os.Getenv("REGISTRARD_ENABLE_TLS") != "" {
+				grpcOption = append(grpcOption, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
+			} else {
+				grpcOption = append(grpcOption, grpc.WithInsecure())
+			}
+
 			ctx := context.Background()
-			conn, err := grpc.DialContext(ctx, host, grpc.WithInsecure())
+			conn, err := grpc.DialContext(ctx, host, grpcOption...)
 			if err != nil {
 				return errors.Wrap(err, "failed to connect to registrard")
 			}
 
 			r := api.NewRegistrarClient(conn)
 			resp, err := r.Register(ctx, &api.RegisterRequest{
-				Id: id,
+				Id:        id,
+				AuthToken: os.Getenv("REGISTRARD_TOKEN"),
 			})
 			if err != nil {
 				return errors.Wrap(err, "failed to register devices")

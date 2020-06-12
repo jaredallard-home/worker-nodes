@@ -8,6 +8,9 @@ message RegisterRequest {
   // ID is used to correlate devices. This will be
   // returned from an initial register request.
   string id = 1;
+
+  // authToken allows access to this endpoint
+  string authToken = 2;
 }
 
 message RegisterResponse {

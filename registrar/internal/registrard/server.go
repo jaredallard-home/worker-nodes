@@ -6,8 +6,10 @@ package registrard
 
 import (
 	"context"
+	"crypto/subtle"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 
 	"github.com/apparentlymart/go-cidr/cidr"
@@ -31,8 +33,10 @@ var (
 
 // Server is the actual server implementation of the API.
 type Server struct {
-	k *v1alpha1.RegistrarClientset
-	w *wghelper.Wireguard
+	k            *v1alpha1.RegistrarClientset
+	w            *wghelper.Wireguard
+	authToken    []byte
+	authTokenlen int32
 }
 
 // NewServer creates a new grpc server interface
@@ -80,6 +84,9 @@ func NewServer(ctx context.Context) (*Server, error) {
 				Infof("added peer")
 		}
 	}
+
+	s.authToken = []byte(os.Getenv("REGISTRARD_TOKEN"))
+	s.authTokenlen = int32(len(s.authToken))
 	return s, err
 }
 
@@ -194,6 +201,17 @@ func (s *Server) createDevice(ctx context.Context, namespace string, r *api.Regi
 // TODO(jaredallard): GC when peer is not added fully
 func (s *Server) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
 	namespace := "default"
+	userTokenByte := []byte(r.AuthToken)
+
+	// we need to check if the auth token is the correct length
+	if subtle.ConstantTimeEq(s.authTokenlen, int32(len(userTokenByte))) == 0 {
+		return nil, fmt.Errorf("invalid auth token")
+	}
+
+	// we need to check if the token is actually valid
+	if subtle.ConstantTimeCompare(s.authToken, userTokenByte) == 0 {
+		return nil, fmt.Errorf("invalid auth token")
+	}
 
 	if r.Id == "" {
 		// generate a new UUID for this device
