@@ -16,6 +16,7 @@ services:
     privileged: true
     labels:
       io.balena.features.sysfs: '1'
+      io.balena.features.kernel-modules: '1'
   
   # Firmware updater
   fwupd:
