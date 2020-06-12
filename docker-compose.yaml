@@ -6,6 +6,8 @@ services:
     command: registrar
     build: ./registrar
     privileged: true
+    labels:
+      io.balena.features.balena-socket: '1'
   
   # Wireguard module installer
   wireguard-installer:

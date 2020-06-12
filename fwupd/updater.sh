@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 
 echo "raspberry-pi firmware version"
-vcgencmd bootloader_version
-if [[ $? -ne 0 ]]; then
+if ! vcgencmd bootloader_version; then
   echo "failed to get version, exiting"
-  exit 1
+  exit 0
 fi
 
 # TODO: We should be able to use any process outside of the
