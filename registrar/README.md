@@ -18,8 +18,14 @@ sudo ip addr add 10.10.0.1/24 dev lo
 
 Now we need to run `registrard`, you can do this:
 
-```go
-// TODO(jaredallard): Add this when we have manifests... and the thing actually works
+```bash
+# TODO(jaredallard): Add this when we have manifests... and the thing actually works
+
+# Create the rancher secret
+kubectl create secret --namespace registrard generic --from-literal="RANCHER_TOKEN=$RANCHER_TOKEN" rancher
+
+# Create TLS secrets
+kubectl create secret --namespace registrard generic --from-file="service.pem=../credentials/service.pem" --from-file="service.key=../credentials/service.key" tls
 ```
 
 ## License

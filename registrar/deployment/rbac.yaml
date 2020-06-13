@@ -1,0 +1,40 @@
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: registrard
+  namespace: registrard
+  labels:
+    app: registrard
+rules:
+  # Used for leader election by the controller
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "update", "patch", "create","delete"]
+  - apiGroups: ["registrar.jaredallard.me"]
+    resources: ["wireguardippool", "wireguardip", "devices"]
+    verbs: ["get","update","patch","create","delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: registrard
+  namespace: registrard
+  labels:
+    app: registrard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: registrard
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: registrard
+    namespace: registrard
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: registrard
+  namespace: registrard
+  labels:
+    app: registrard

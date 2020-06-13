@@ -18,6 +18,10 @@ FROM alpine:${alpine_ver}
 # hadolint ignore=DL3018
 RUN apk add --no-cache ca-certificates
 
+# Add our TLS CA
+COPY ca.crt /usr/local/share/ca-certificates/registrard-ca.crt
+RUN update-ca-certificates
+
 COPY --from=build /src/registrard/bin/* /usr/local/bin/
 
 CMD [ "/usr/local/bin/registrard" ]

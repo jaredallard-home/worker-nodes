@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: registrard
+  namespace: registrard
+  labels:
+    app: registrard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: registrard
+  template:
+    metadata:
+      labels:
+        app: registrard
+    spec:
+      serviceAccountName: registrard
+      nodeSelector:
+        kubernetes.io/hostname: shino
+      containers:
+      - name: registrard
+        image: jaredallard/registrar:latest
+        imagePullPolicy: Always
+        env:
+        - name: RANCHER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: RANCHER_TOKEN
+              name: rancher
+        - name: REGISTRARD_ENABLE_TLS
+          value: "true"
+        - name: REGISTRARD_PEM_FILEPATH
+          value: /var/run/secrets/registrard.jaredallard.me/tls/service.pem
+        - name: REGISTRARD_KEY_FILEPATH
+          value: /var/run/secrets/registrard.jaredallard.me/tls/service.key
+        volumeMounts:
+        - name: tls
+          mountPath: "/var/run/secrets/registrard.jaredallard.me/tls"
+          readOnly: true
+        ports:
+        - name: grpc
+          containerPort: 8000
+        - name: wireguard
+          containerPort: 51820
+          protocol: UDP
+        resources:
+          limits:
+            cpu: 200m
+            memory: 100Mi
+          requests:
+            cpu: 100m
+            memory: 10Mi
+      volumes:
+      - name: tls
+        secret:
+          secretName: tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: registrard
+spec:
+  type: NodePort
+  selector:
+    app: registrard
+  ports:
+  - port: 8000
+    targetPort: grpc
+    protocol: TCP
+  - port: 51820
+    targetPort: wireguard
+    protocol: UDP
