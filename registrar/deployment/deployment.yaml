@@ -18,6 +18,15 @@ spec:
       serviceAccountName: registrard
       nodeSelector:
         kubernetes.io/hostname: shino
+      tolerations:
+      - key: node-role.kubernetes.io/etcd
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/controlplane
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
       containers:
       - name: registrard
         image: jaredallard/registrar:latest
@@ -28,6 +37,11 @@ spec:
             secretKeyRef:
               key: RANCHER_TOKEN
               name: rancher
+        - name: REGISTRARD_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: REGISTRARD_TOKEN
+              name: registrard
         - name: REGISTRARD_ENABLE_TLS
           value: "true"
         - name: REGISTRARD_PEM_FILEPATH
@@ -44,6 +58,10 @@ spec:
         - name: wireguard
           containerPort: 51820
           protocol: UDP
+        securityContext:
+          privileged: true
+          runAsUser: 0
+          runAsNonRoot: false
         resources:
           limits:
             cpu: 200m
@@ -55,19 +73,19 @@ spec:
       - name: tls
         secret:
           secretName: tls
+      hostNetwork: true
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: registrard
+  namespace: registrard
 spec:
-  type: NodePort
+  type: LoadBalancer
   selector:
     app: registrard
   ports:
-  - port: 8000
+  - name: grpc
+    port: 8000
     targetPort: grpc
     protocol: TCP
-  - port: 51820
-    targetPort: wireguard
-    protocol: UDP

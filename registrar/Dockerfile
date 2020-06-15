@@ -16,7 +16,7 @@ RUN make gobuild
 FROM alpine:${alpine_ver}
 
 # hadolint ignore=DL3018
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates wireguard-tools
 
 # Add our TLS CA
 COPY ca.crt /usr/local/share/ca-certificates/registrard-ca.crt

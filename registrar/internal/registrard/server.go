@@ -18,6 +18,7 @@ import (
 	"github.com/jaredallard-home/worker-nodes/registrar/apis/clientset/v1alpha1"
 	registrar "github.com/jaredallard-home/worker-nodes/registrar/apis/types/v1alpha1"
 	"github.com/jaredallard-home/worker-nodes/registrar/internal/kube"
+	"github.com/jaredallard-home/worker-nodes/registrar/pkg/rancher"
 	"github.com/jaredallard-home/worker-nodes/registrar/pkg/wghelper"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -35,6 +36,7 @@ var (
 type Server struct {
 	k            *v1alpha1.RegistrarClientset
 	w            *wghelper.Wireguard
+	r            *rancher.Client
 	authToken    []byte
 	authTokenlen int32
 }
@@ -47,6 +49,8 @@ func NewServer(ctx context.Context) (*Server, error) {
 		return nil, errors.Wrap(err, "failed to create kube config")
 	}
 
+	s.r = rancher.NewClient(os.Getenv("RANCHER_TOKEN"))
+
 	s.k, err = v1alpha1.NewForConfig(c)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create kubernetes and registrar clientset")
@@ -57,7 +61,7 @@ func NewServer(ctx context.Context) (*Server, error) {
 		return nil, errors.Wrap(err, "failed to create wireguard controller")
 	}
 
-	_, pool, err := s.getCIDR(ctx, "default")
+	_, pool, err := s.getCIDR(ctx, "registrard")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get CIDR block")
 	}
@@ -71,7 +75,7 @@ func NewServer(ctx context.Context) (*Server, error) {
 	// TODO(jaredallard): default namespace hardcode
 	// TODO(jaredallard): move this out and support pagination
 	// download all of the wireguard peers and insert them into our devices
-	ips, err := s.k.RegistrarV1Alpha1Client().WireguardIPs("default").List(ctx, metav1.ListOptions{})
+	ips, err := s.k.RegistrarV1Alpha1Client().WireguardIPs("registrard").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		log.Warnf("failed to fetch peers from kubernetes: %v", err)
 	}
@@ -200,7 +204,7 @@ func (s *Server) createDevice(ctx context.Context, namespace string, r *api.Regi
 // Register registers a new device into the wireguard network.
 // TODO(jaredallard): GC when peer is not added fully
 func (s *Server) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
-	namespace := "default"
+	namespace := "registrard"
 	userTokenByte := []byte(r.AuthToken)
 
 	// we need to check if the auth token is the correct length
@@ -258,9 +262,21 @@ func (s *Server) Register(ctx context.Context, r *api.RegisterRequest) (*api.Reg
 		return nil, errors.Wrap(err, "failed to get device ip pool")
 	}
 
+	// FIXME: hardcoded ID
+	tr, err := s.r.GetClusterRegistrationToken(ctx, "c-nv84x")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get rancher token")
+	}
+
+	// TODO(jaredallard): we should create one then
+	if len(tr) == 0 {
+		return nil, errors.Wrap(err, "no cluster registration tokens available for specified rancher cluster")
+	}
+
 	resp.Key = string(sec.Data["wireguard-key"])
 	resp.IpAddress = wgip.Spec.IPAdress
 	resp.PublicKey = wgp.Status.PublicKey
+	resp.RancherToken = tr[0].Token
 
 	return resp, nil
 }

@@ -1,4 +1,6 @@
 version: "2.1"
+volumes: 
+    registrar-data:
 services:
   # Kubernetes and Wireguard initialization platform
   registrar:
@@ -6,9 +8,18 @@ services:
     command: registrar
     build: ./registrar
     privileged: true
+    network_mode: host
+    volumes:
+    - registrar-data:/etc/registrar
     labels:
       io.balena.features.balena-socket: '1'
   
+  root-normalizer:
+    restart: 'on-failure'
+    build: ./root-normalizer
+    pid: host
+    privileged: true
+
   # Wireguard module installer
   wireguard-installer:
     restart: no

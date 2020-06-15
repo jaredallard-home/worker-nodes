@@ -4,11 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -56,6 +57,10 @@ func main() {
 				Usage:  "Wireguard server endpoint",
 				EnvVar: "WIREGUARD_HOST",
 			},
+			cli.BoolFlag{
+				Name:  "no-agent",
+				Usage: "Disable launching the rancher-agent, just spin up wireguard",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			if !c.Bool("skip-wireguard-check") {
@@ -97,7 +102,13 @@ func main() {
 
 			grpcOption := make([]grpc.DialOption, 0)
 			if os.Getenv("REGISTRARD_ENABLE_TLS") != "" {
-				grpcOption = append(grpcOption, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
+				tlsConf := &tls.Config{}
+				if os.Getenv("REGISTRARD_INSECURE") != "" {
+					log.Warn("skipping TLS certificate host verification")
+					tlsConf.InsecureSkipVerify = true
+				}
+
+				grpcOption = append(grpcOption, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
 			} else {
 				grpcOption = append(grpcOption, grpc.WithInsecure())
 			}
@@ -147,22 +158,25 @@ func main() {
 				return errors.Wrap(err, "failed to start wireguard client")
 			}
 
+			if c.Bool("no-agent") {
+				return nil
+			}
+
 			// TODO(jaredallard): get this from the server
-			dockerImage := "rancher/rancher-agent:v2.4.4"
+			dockerImage := "docker.io/rancher/rancher-agent:v2.4.4"
 			cli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv)
 			if err != nil {
 				return errors.Wrap(err, "failed to create docker client")
 			}
-			// cli.ImagePull(ctx, dockerImage, types.ImagePullOptions{})
 
 			if _, err := cli.ContainerInspect(ctx, "rancher-agent"); err != nil {
-				log.WithError(err).Info("creating rancher-agent")
-				cmd := exec.Command("docker", "pull", dockerImage)
-				cmd.Stdout = os.Stdout
-				cmd.Stderr = os.Stderr
-				err := cmd.Run()
+				reader, err := cli.ImagePull(ctx, dockerImage, types.ImagePullOptions{})
 				if err != nil {
-					return errors.Wrap(err, "failed to pull image")
+					return errors.Wrap(err, "failed to pull docker image")
+				}
+
+				if _, err := io.Copy(os.Stdout, reader); err != nil {
+					return errors.Wrap(err, "failed to pull docker image")
 				}
 
 				cont, err := cli.ContainerCreate(
@@ -182,18 +196,19 @@ func main() {
 
 						Mounts: []mount.Mount{
 							{
+								Type:   mount.TypeBind,
 								Source: "/etc/kubernetes",
 								Target: "/etc/kubernetes",
 							},
 							{
-								Source: "/var/run",
-								Target: "/var/run",
+								Type:   mount.TypeBind,
+								Source: "/var/run/balena.sock",
+								Target: "/var/run/docker.sock",
 							},
 						},
 						NetworkMode: "host",
 						RestartPolicy: container.RestartPolicy{
-							Name:              "unless-stopped",
-							MaximumRetryCount: -1,
+							Name: "unless-stopped",
 						},
 					}, nil, "rancher-agent")
 				if err != nil {
@@ -211,4 +226,7 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.WithError(err).Fatalf("failed to start")
 	}
+
+	// Stay up for an hour for debugging, if needed.
+	time.Sleep(time.Minute * 60)
 }

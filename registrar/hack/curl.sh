@@ -8,4 +8,4 @@ if ! command -v grpcurl >/dev/null; then
   exit 1
 fi
 
-grpcurl -plaintext -import-path "$DIR/../api/" --proto "registrar.proto" $@
+grpcurl -insecure -import-path "$DIR/../api/" --proto "registrar.proto" $@
