@@ -13,9 +13,11 @@ if ! pgrep balenad >/dev/null 2>&1; then
   echo "Error: Failed to find pid of balenad, unable to update firmware"
 fi
 
-echo "updating raspberry-pi firmware version"
-apt-get -y update
-apt-get install -y rpi-eeprom
+# Enable here if you want to JIT upgrade to latest firmware
+# Otherwise you can use the baked in version
+#echo "updating raspberry-pi firmware version"
+#apt-get -y update
+#apt-get install --no-install-recommends -y rpi-eeprom
 
 rpi-eeprom-update -a -i
 if [[ ! -e "/boot/recovery.bin" ]]; then

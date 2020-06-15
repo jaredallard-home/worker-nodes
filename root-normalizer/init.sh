@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
+#
+# root-normalizer
+#
+# Attmepts to create a Kubernetes friendly environment. Currently only supports BalenaOS.
 
 bind_mounts=("/etc/kubernetes" "/var/lib/rancher" "/var/lib/kubelet" "/etc/cni/net.d" "/opt/cni/bin")
 
-balenad_pid="$(pgrep balenad)"
-if [[ -z "$balenad_pid" ]]; then
-  echo "Error: failed to find balenad PID"
-  exit 1
-fi
-
 echo " :: Mounting / as rw"
-nsenter -t "$balenad_pid" -m sh -- -c "mount -o remount,rw /"
+nsenter -t 1 -m sh -- -c "mount -o remount,rw /"
 
 for bm in "${bind_mounts[@]}"; do
   isMounted=$(nsenter -t 1 -m sh -- -c "mount | grep $bm")
@@ -43,7 +41,7 @@ if [[ -n "$needsMountFlagsPatch" ]]; then
 fi
 
 echo " :: Remounting / as ro"
-nsenter -t "$balenad_pid" -m sh -- -c "mount -o remount,ro /"
+nsenter -t 1 -m sh -- -c "mount -o remount,ro /"
 
 echo " :: Creating /var/run/docker.sock"
-exec socat "UNIX-LISTEN:/proc/$balenad_pid/root/var/run/docker.sock,fork" "UNIX-CONNECT:/proc/$balenad_pid/root/var/run/balena.sock"
+exec socat "UNIX-LISTEN:/proc/1/root/var/run/docker.sock,fork" "UNIX-CONNECT:/proc/1/root/var/run/balena.sock"
