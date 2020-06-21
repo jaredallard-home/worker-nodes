@@ -28,7 +28,7 @@ type Wireguard struct {
 
 // NewWireguard creates a new wireguard configuration instance, that stores
 // IP information in Kubernetes
-func NewWireguard(k *registrar.RegistrarClientset) (*Wireguard, error) {
+func NewWireguard(k *registrar.RegistrarClientset) (*Wireguard, error) { //nolint:funlen
 	w, err := wgctrl.New()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create wireguard controller")
@@ -59,7 +59,7 @@ func NewWireguard(k *registrar.RegistrarClientset) (*Wireguard, error) {
 			LinkAttrs: attrs,
 		}
 
-		if err := netlink.LinkAdd(l); err != nil {
+		if err = netlink.LinkAdd(l); err != nil {
 			return nil, errors.Wrap(err, "failed to create link")
 		}
 
@@ -79,7 +79,7 @@ func NewWireguard(k *registrar.RegistrarClientset) (*Wireguard, error) {
 	return resp, nil
 }
 
-func (w *Wireguard) StartClient(endpoint string, ourIP string, k wgtypes.Key, pubk wgtypes.Key) error {
+func (w *Wireguard) StartClient(endpoint, ourIP string, k, pubk wgtypes.Key) error { //nolint:funlen
 	ip, _, err := net.ParseCIDR(ourIP + "/32")
 	if err != nil {
 		return errors.Wrap(err, "failed to parse wireguard ip address")
@@ -90,8 +90,12 @@ func (w *Wireguard) StartClient(endpoint string, ourIP string, k wgtypes.Key, pu
 		return errors.Wrap(err, "failed to resolve endpoint address")
 	}
 
-	pki := time.Duration(5 * time.Second)
-	_, globalCidr, _ := net.ParseCIDR(ourIP + "/24")
+	pki := 5 * time.Second
+	_, globalCidr, err := net.ParseCIDR(ourIP + "/24")
+	if err != nil {
+		return err
+	}
+
 	peer := &wgtypes.PeerConfig{
 		PublicKey:         pubk,
 		UpdateOnly:        false,
@@ -128,7 +132,7 @@ func (w *Wireguard) StartClient(endpoint string, ourIP string, k wgtypes.Key, pu
 	return errors.Wrap(err, "failed to set link to up")
 }
 
-func (w *Wireguard) StartServer(ipool *v1alpha1.WireguardIPPool) error {
+func (w *Wireguard) StartServer(ipool *v1alpha1.WireguardIPPool) error { //nolint:funlen
 	if w.device.PrivateKey.String() == "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" {
 		log.Info("failed to find initialized device, creating new server")
 		if err := w.initServer(ipool); err != nil {
@@ -142,12 +146,12 @@ func (w *Wireguard) StartServer(ipool *v1alpha1.WireguardIPPool) error {
 	}
 
 	// detect a null ip address, if set
-	if lo, err := netlink.LinkByName("lo"); err == nil {
-		addrs, err := netlink.AddrList(lo, 0)
+	if lo, err := netlink.LinkByName("lo"); err == nil { //nolint:govet
+		addrs, err := netlink.AddrList(lo, 0) //nolint:govet
 		if err == nil {
-			for _, addr := range addrs {
-				if addr.IP.String() == ip.String() {
-					err := netlink.AddrDel(lo, &addr)
+			for i := range addrs {
+				if addrs[i].IP.String() == ip.String() {
+					err := netlink.AddrDel(lo, &addrs[i]) //nolint:scopelint
 					if err != nil {
 						log.Errorf("failed to remove null address on loopback: %v", err)
 					} else {
@@ -188,7 +192,7 @@ func (w *Wireguard) Flush(ctx context.Context) error {
 }
 
 // initServer initializes a new wireguard server
-func (w *Wireguard) initServer(ipool *v1alpha1.WireguardIPPool) error {
+func (w *Wireguard) initServer(ipool *v1alpha1.WireguardIPPool) error { //nolint:funlen
 	if ipool.Status.SecretRef == "" {
 		log.Info("failed to find a secret key for this ippool, creating new one")
 		privk, err := wgtypes.GeneratePrivateKey()
@@ -246,22 +250,22 @@ func (w *Wireguard) initServer(ipool *v1alpha1.WireguardIPPool) error {
 
 // Register adds a new peer to a device, and returns the information needed to connect
 // as said peer
-func (w *Wireguard) Register(ctx context.Context, ip *v1alpha1.WireguardIP) (*wgtypes.PeerConfig, error) {
+func (w *Wireguard) Register(ctx context.Context, ip *v1alpha1.WireguardIP) (*wgtypes.PeerConfig, error) { //nolint:funlen
 	var privk wgtypes.Key
 
 	// TODO(jaredallard): this entire section needs help.
 	d, err := w.k.RegistrarV1Alpha1Client().Devices("registrard").
 		Get(ctx, ip.Spec.DeviceRef, metav1.GetOptions{})
-	if kerrors.IsNotFound(err) {
+	if kerrors.IsNotFound(err) { //nolint:gocritic
 		// device was just created, so we generate a private key for it
-		var err error
 		privk, err = wgtypes.GeneratePrivateKey()
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to generate private key")
 		}
 	} else if err == nil {
 		// we found the device, so we fetch the existing secret
-		s, err := w.k.CoreV1().Secrets("registrard").Get(ctx, d.Spec.SecretRef, metav1.GetOptions{})
+		var s *corev1.Secret
+		s, err = w.k.CoreV1().Secrets("registrard").Get(ctx, d.Spec.SecretRef, metav1.GetOptions{})
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get device ip secret")
 		}
@@ -278,11 +282,11 @@ func (w *Wireguard) Register(ctx context.Context, ip *v1alpha1.WireguardIP) (*wg
 	pki := 5 * time.Second
 
 	// HACK: better way...
-	devIp, cidr, err := net.ParseCIDR(ip.Spec.IPAdress + "/32")
+	devIP, cidr, err := net.ParseCIDR(ip.Spec.IPAdress + "/32")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create cidr from ip address")
 	}
-	cidr.IP = devIp
+	cidr.IP = devIP
 
 	log.WithContext(ctx).WithFields(log.Fields{"ip": ip.Spec.IPAdress}).Info("adding wireguard peer")
 	peer := &wgtypes.PeerConfig{

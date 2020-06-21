@@ -54,7 +54,7 @@ gobuild: check_deps
 	GOPROXY=$(GOPROXY) GOPRIVATE=$(GOPRIVATE) CGO_ENABLED=$(CGO_ENABLED) $(GO) build -o $(BINDIR)/ -ldflags "$(LDFLAGS)" $(GO_EXTRA_FLAGS) $(PKGDIR)/...
 .PHONY: docker-build
 docker-build:
-	DOCKER_BUILDKIT=1 docker build --ssh default -t jaredallard/registrar -f Dockerfile . --build-arg VERSION=${APP_VERSION}
+	DOCKER_BUILDKIT=1 docker buildx build --platform amd64,arm64 --ssh default -t jaredallard/registrar -f Dockerfile . --build-arg VERSION=${APP_VERSION} --push
 
 .PHONY: fmt
 fmt:

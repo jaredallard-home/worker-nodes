@@ -27,23 +27,23 @@ import (
 
 const dockerImage = "docker.io/rancher/rancher-agent:v2.4.5"
 
-func leaderMode(c *cli.Context, ctx context.Context) error {
-	cli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv)
+func leaderMode(ctx context.Context, c *cli.Context) error { //nolint:funlen
+	dockercli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv)
 	if err != nil {
 		return errors.Wrap(err, "failed to create docker client")
 	}
 
-	if _, err := cli.ContainerInspect(ctx, "rancher-agent"); err != nil {
-		reader, err := cli.ImagePull(ctx, dockerImage, types.ImagePullOptions{})
+	if _, err := dockercli.ContainerInspect(ctx, "rancher-agent"); err != nil {
+		reader, err := dockercli.ImagePull(ctx, dockerImage, types.ImagePullOptions{})
 		if err != nil {
 			return errors.Wrap(err, "failed to pull docker image")
 		}
 
-		if _, err := io.Copy(os.Stdout, reader); err != nil {
+		if _, err = io.Copy(os.Stdout, reader); err != nil {
 			return errors.Wrap(err, "failed to pull docker image")
 		}
 
-		cont, err := cli.ContainerCreate(
+		cont, err := dockercli.ContainerCreate(
 			ctx,
 			&container.Config{
 				Image: dockerImage,
@@ -84,13 +84,13 @@ func leaderMode(c *cli.Context, ctx context.Context) error {
 		}
 
 		// start the container
-		return cli.ContainerStart(ctx, cont.ID, types.ContainerStartOptions{})
+		return dockercli.ContainerStart(ctx, cont.ID, types.ContainerStartOptions{})
 	}
 
 	return nil
 }
 
-func main() {
+func main() { //nolint:funlen,gocyclo
 	ctx := context.Background()
 
 	app := cli.App{
@@ -109,7 +109,7 @@ func main() {
 			},
 			cli.StringFlag{
 				Name:   "registrard-host",
-				Usage:  "Specify the registard hostname",
+				Usage:  "Specify the registrard hostname",
 				EnvVar: "REGISTRARD_HOST",
 				Value:  "127.0.0.1:8000",
 			},
@@ -148,7 +148,7 @@ func main() {
 			}
 
 			if c.Bool("leader-mode") {
-				return leaderMode(c, ctx)
+				return leaderMode(ctx, c)
 			}
 
 			host := c.String("registrard-host")
@@ -218,7 +218,7 @@ func main() {
 
 			// we didn't find one to start with, so we write it to disk
 			if id == "" {
-				if err := ioutil.WriteFile(ipConfDir, []byte(resp.Id), 0755); err != nil {
+				if err = ioutil.WriteFile(ipConfDir, []byte(resp.Id), 0600); err != nil {
 					log.Errorf("failed to save registration id")
 				}
 			}
@@ -248,7 +248,7 @@ func main() {
 					return errors.Wrap(err, "failed to pull docker image")
 				}
 
-				if _, err := io.Copy(os.Stdout, reader); err != nil {
+				if _, err = io.Copy(os.Stdout, reader); err != nil {
 					return errors.Wrap(err, "failed to pull docker image")
 				}
 

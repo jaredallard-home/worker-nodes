@@ -17,7 +17,7 @@ type GRPCService struct {
 	srv *grpc.Server
 }
 
-func (s *GRPCService) Run(ctx context.Context) error {
+func (s *GRPCService) Run(ctx context.Context) error { //nolint:funlen
 	listAddr := ":" + strconv.Itoa(8000)
 	l, err := net.Listen("tcp", listAddr)
 	if err != nil {
@@ -66,7 +66,7 @@ func (s *GRPCService) Close() error {
 	return nil
 }
 
-type rpcservice struct {
+type rpcservice struct { //nolint:unused
 	api.Service
 }
 

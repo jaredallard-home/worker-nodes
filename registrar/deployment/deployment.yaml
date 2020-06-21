@@ -17,12 +17,12 @@ spec:
     spec:
       serviceAccountName: registrard
       nodeSelector:
-        kubernetes.io/hostname: shino
+        node-role.kubernetes.io/controlplane: 'true'
       tolerations:
       - key: node-role.kubernetes.io/etcd
         operator: Equal
         value: "true"
-        effect: NoSchedule
+        effect: NoExecute
       - key: node-role.kubernetes.io/controlplane
         operator: Equal
         value: "true"

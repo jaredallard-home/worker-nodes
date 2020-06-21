@@ -17,7 +17,7 @@ func (s *ShutdownService) Run(ctx context.Context) error {
 	s.c = make(chan os.Signal, 10)
 	signal.Notify(s.c, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	if out, ok := <-s.c; ok {
-		return fmt.Errorf("Shutting down due to interrupt: %v", out)
+		return fmt.Errorf("shutting down due to interrupt: %v", out)
 	}
 
 	return nil

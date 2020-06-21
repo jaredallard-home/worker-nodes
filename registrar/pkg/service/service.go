@@ -58,7 +58,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		case <-ctx.Done():
 			r.shutdown()
-			return fmt.Errorf("context cancelled")
+			return fmt.Errorf("context canceled")
 		}
 	}
 }

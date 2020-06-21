@@ -3,14 +3,29 @@
     "address",
     "balena",
     "bus",
+    "corev",
     "dbus",
     "dbus system bus address unix",
+    "dockercli",
+    "etcd",
     "features",
     "fwupd",
+    "gocyclo",
     "io",
     "io balena features dbus",
+    "ipool",
+    "metav",
+    "nolint",
+    "privk",
+    "pubk",
     "system",
     "unix",
+    "wgtypes",
     "wireguard"
-  ]
+  ],
+  "go.lintTool": "golangci-lint",
+  "go.lintFlags": [
+    "--config=${workspaceFolder}/.golangci.yml",
+    "--fast"
+  ],
 }

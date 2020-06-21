@@ -118,16 +118,16 @@ func NewClient(authKey string) *Client {
 
 // GetClusterRegistrationToken returns all cluster registration tokens or, if clusterId is provided
 // all tokens for a given server.
-func (c *Client) GetClusterRegistrationToken(ctx context.Context, clusterId string) ([]ClusterRegistrationTokenData, error) {
+func (c *Client) GetClusterRegistrationToken(ctx context.Context, clusterID string) ([]ClusterRegistrationTokenData, error) { //nolint:funlen
 	u := url.URL{
 		Scheme: c.baseURL.Scheme,
 		Host:   c.baseURL.Host,
 		Path:   "/v3/clusterregistrationtokens",
 	}
 
-	if clusterId != "" {
+	if clusterID != "" {
 		q := u.Query()
-		q.Set("clusterId", clusterId)
+		q.Set("clusterId", clusterID)
 		u.RawQuery = q.Encode()
 	}
 

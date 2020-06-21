@@ -262,15 +262,15 @@ func (s *Server) Register(ctx context.Context, r *api.RegisterRequest) (*api.Reg
 		return nil, errors.Wrap(err, "failed to get device ip pool")
 	}
 
-	// FIXME: hardcoded ID
-	tr, err := s.r.GetClusterRegistrationToken(ctx, "c-nv84x")
+	// TODO(jaredallard): fix this hardcoded ID
+	tr, err := s.r.GetClusterRegistrationToken(ctx, "c-ptjcq")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get rancher token")
 	}
 
 	// TODO(jaredallard): we should create one then
 	if len(tr) == 0 {
-		return nil, errors.Wrap(err, "no cluster registration tokens available for specified rancher cluster")
+		return nil, fmt.Errorf("no cluster registration tokens available for specified rancher cluster")
 	}
 
 	resp.Key = string(sec.Data["wireguard-key"])
