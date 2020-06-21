@@ -4,7 +4,7 @@
 #
 # Attmepts to create a Kubernetes friendly environment. Currently only supports BalenaOS.
 
-bind_mounts=("/etc/kubernetes" "/var/lib/rancher" "/var/lib/kubelet" "/etc/cni/net.d" "/opt/cni/bin")
+bind_mounts=("/etc/kubernetes" "/var/lib/rancher" "/var/lib/kubelet" "/etc/cni/net.d" "/opt/cni/bin" "/etc/ceph")
 
 echo " :: Mounting / as rw"
 nsenter -t 1 -m sh -- -c "mount -o remount,rw /"

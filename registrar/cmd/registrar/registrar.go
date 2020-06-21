@@ -163,7 +163,7 @@ func main() {
 			}
 
 			// TODO(jaredallard): get this from the server
-			dockerImage := "docker.io/rancher/rancher-agent:v2.4.4"
+			dockerImage := "docker.io/rancher/rancher-agent:v2.4.5"
 			cli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv)
 			if err != nil {
 				return errors.Wrap(err, "failed to create docker client")

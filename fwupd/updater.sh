@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-echo ":: Current Raspberry Pi firmware version"
+echo " :: Current Raspberry Pi firmware version"
 if ! vcgencmd bootloader_version; then
   echo ":: Warning: Failed to get version, exiting"
   exit 0
