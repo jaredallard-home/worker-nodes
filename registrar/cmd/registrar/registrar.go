@@ -56,7 +56,7 @@ func leaderMode(c *cli.Context, ctx context.Context) error {
 					"--controlplane",
 					"--internal-address",
 					// TODO(jaredallard): need to detect this somehow....
-					"10.0.0.1",
+					"10.10.0.1",
 				},
 			},
 			&container.HostConfig{
