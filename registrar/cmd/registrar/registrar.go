@@ -25,7 +25,74 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+const dockerImage = "docker.io/rancher/rancher-agent:v2.4.5"
+
+func leaderMode(c *cli.Context, ctx context.Context) error {
+	cli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv)
+	if err != nil {
+		return errors.Wrap(err, "failed to create docker client")
+	}
+
+	if _, err := cli.ContainerInspect(ctx, "rancher-agent"); err != nil {
+		reader, err := cli.ImagePull(ctx, dockerImage, types.ImagePullOptions{})
+		if err != nil {
+			return errors.Wrap(err, "failed to pull docker image")
+		}
+
+		if _, err := io.Copy(os.Stdout, reader); err != nil {
+			return errors.Wrap(err, "failed to pull docker image")
+		}
+
+		cont, err := cli.ContainerCreate(
+			ctx,
+			&container.Config{
+				Image: dockerImage,
+				Cmd: []string{
+					"--server",
+					c.String("rancher-endpoint"),
+					"--token",
+					os.Getenv("RANCHER_SERVER_TOKEN"),
+					"--etcd",
+					"--controlplane",
+					"--internal-address",
+					// TODO(jaredallard): need to detect this somehow....
+					"10.0.0.1",
+				},
+			},
+			&container.HostConfig{
+				Privileged: true,
+
+				Mounts: []mount.Mount{
+					{
+						Type:   mount.TypeBind,
+						Source: "/etc/kubernetes",
+						Target: "/etc/kubernetes",
+					},
+					{
+						Type:   mount.TypeBind,
+						Source: "/var/run/balena.sock",
+						Target: "/var/run/docker.sock",
+					},
+				},
+				NetworkMode: "host",
+				RestartPolicy: container.RestartPolicy{
+					Name: "unless-stopped",
+				},
+			}, nil, "rancher-agent")
+		if err != nil {
+			return errors.Wrap(err, "failed to create rancher agent container")
+		}
+
+		// start the container
+		return cli.ContainerStart(ctx, cont.ID, types.ContainerStartOptions{})
+	}
+
+	return nil
+}
+
 func main() {
+	ctx := context.Background()
+
 	app := cli.App{
 		Name:  "registrar",
 		Usage: "Configure a device using a remote registrar server",
@@ -61,6 +128,11 @@ func main() {
 				Name:  "no-agent",
 				Usage: "Disable launching the rancher-agent, just spin up wireguard",
 			},
+			cli.BoolFlag{
+				Name:   "leader-mode",
+				Usage:  "Run a node in leader mode.",
+				EnvVar: "LEADER_MODE",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			if !c.Bool("skip-wireguard-check") {
@@ -73,6 +145,10 @@ func main() {
 				if !strings.Contains(string(b), "wireguard") {
 					return fmt.Errorf("failed to find wireguard kernel module, ensure it's loaded")
 				}
+			}
+
+			if c.Bool("leader-mode") {
+				return leaderMode(c, ctx)
 			}
 
 			host := c.String("registrard-host")
@@ -113,7 +189,6 @@ func main() {
 				grpcOption = append(grpcOption, grpc.WithInsecure())
 			}
 
-			ctx := context.Background()
 			conn, err := grpc.DialContext(ctx, host, grpcOption...)
 			if err != nil {
 				return errors.Wrap(err, "failed to connect to registrard")
@@ -162,8 +237,6 @@ func main() {
 				return nil
 			}
 
-			// TODO(jaredallard): get this from the server
-			dockerImage := "docker.io/rancher/rancher-agent:v2.4.5"
 			cli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv)
 			if err != nil {
 				return errors.Wrap(err, "failed to create docker client")
@@ -189,6 +262,8 @@ func main() {
 							"--token",
 							resp.RancherToken,
 							"--worker",
+							"--internal-address",
+							resp.IpAddress,
 						},
 					},
 					&container.HostConfig{
