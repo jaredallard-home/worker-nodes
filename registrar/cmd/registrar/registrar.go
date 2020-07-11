@@ -113,6 +113,11 @@ func main() { //nolint:funlen,gocyclo
 				EnvVar: "REGISTRARD_HOST",
 				Value:  "127.0.0.1:8000",
 			},
+			cli.BoolFlag{
+				Name:   "no-wireguard",
+				EnvVar: "NO_WIREGUARD",
+				Usage:  "Disable Wireguard Creation, may break things....",
+			},
 			cli.StringFlag{
 				Name:   "rancher-endpoint",
 				Usage:  "Rancher Endpoint",
@@ -125,8 +130,9 @@ func main() { //nolint:funlen,gocyclo
 				EnvVar: "WIREGUARD_HOST",
 			},
 			cli.BoolFlag{
-				Name:  "no-agent",
-				Usage: "Disable launching the rancher-agent, just spin up wireguard",
+				Name:   "no-agent",
+				EnvVar: "NO_AGENT",
+				Usage:  "Disable launching the rancher-agent, just spin up wireguard",
 			},
 			cli.BoolFlag{
 				Name:   "leader-mode",
@@ -203,34 +209,36 @@ func main() { //nolint:funlen,gocyclo
 				return errors.Wrap(err, "failed to register devices")
 			}
 
-			k, err := wgtypes.ParseKey(resp.Key)
-			if err != nil {
-				return errors.Wrap(err, "failed to parse returned wireguard key")
-			}
-
-			serverPub, err := wgtypes.ParseKey(resp.PublicKey)
-			if err != nil {
-				return errors.Wrap(err, "failed to parse returned server wireguard public key")
-			}
-
-			log.WithFields(log.Fields{"ip": resp.IpAddress, "key": k.PublicKey, "id": id}).
-				Infof("got registration information")
-
-			// we didn't find one to start with, so we write it to disk
-			if id == "" {
-				if err = ioutil.WriteFile(ipConfDir, []byte(resp.Id), 0600); err != nil {
-					log.Errorf("failed to save registration id")
+			if !c.Bool("no-wireguard") {
+				k, err := wgtypes.ParseKey(resp.Key)
+				if err != nil {
+					return errors.Wrap(err, "failed to parse returned wireguard key")
 				}
-			}
 
-			w, err := wghelper.NewWireguard(nil)
-			if err != nil {
-				return errors.Wrap(err, "failed to create wireguard device")
-			}
+				serverPub, err := wgtypes.ParseKey(resp.PublicKey)
+				if err != nil {
+					return errors.Wrap(err, "failed to parse returned server wireguard public key")
+				}
 
-			err = w.StartClient(wireguardHost, resp.IpAddress, k, serverPub)
-			if err != nil {
-				return errors.Wrap(err, "failed to start wireguard client")
+				log.WithFields(log.Fields{"ip": resp.IpAddress, "key": k.PublicKey, "id": id}).
+					Infof("got registration information")
+
+				// we didn't find one to start with, so we write it to disk
+				if id == "" {
+					if err = ioutil.WriteFile(ipConfDir, []byte(resp.Id), 0600); err != nil {
+						log.Errorf("failed to save registration id")
+					}
+				}
+
+				w, err := wghelper.NewWireguard(nil)
+				if err != nil {
+					return errors.Wrap(err, "failed to create wireguard device")
+				}
+
+				err = w.StartClient(wireguardHost, resp.IpAddress, k, serverPub)
+				if err != nil {
+					return errors.Wrap(err, "failed to start wireguard client")
+				}
 			}
 
 			if c.Bool("no-agent") {
@@ -252,19 +260,23 @@ func main() { //nolint:funlen,gocyclo
 					return errors.Wrap(err, "failed to pull docker image")
 				}
 
+				args := []string{
+					"--server",
+					rancherHost,
+					"--token",
+					resp.RancherToken,
+					"--worker",
+				}
+
+				if !c.Bool("no-wireguard") {
+					args = append(args, "--internal-address", resp.IpAddress)
+				}
+
 				cont, err := cli.ContainerCreate(
 					ctx,
 					&container.Config{
 						Image: dockerImage,
-						Cmd: []string{
-							"--server",
-							rancherHost,
-							"--token",
-							resp.RancherToken,
-							"--worker",
-							"--internal-address",
-							resp.IpAddress,
-						},
+						Cmd:   args,
 					},
 					&container.HostConfig{
 						Privileged: true,
