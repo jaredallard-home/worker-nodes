@@ -263,7 +263,7 @@ func (s *Server) Register(ctx context.Context, r *api.RegisterRequest) (*api.Reg
 	}
 
 	// TODO(jaredallard): fix this hardcoded ID
-	tr, err := s.r.GetClusterRegistrationToken(ctx, "c-ptjcq")
+	tr, err := s.r.GetClusterRegistrationToken(ctx, "c-bdz2g")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get rancher token")
 	}

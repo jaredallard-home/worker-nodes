@@ -1,0 +1,19 @@
+version: "2.1"
+volumes: 
+    registrar-data:
+services:
+  # Kubernetes and Wireguard initialization platform
+  registrar:
+    restart: 'always'
+    command: registrar --no-agent
+    image: jaredallard/registrar
+    privileged: true
+    network_mode: host
+    environment:
+      WIREGUARD_HOST: 192.x.x.x:51820
+      REGISTRARD_TOKEN: your-token-here
+      REGISTRARD_HOST: 192.x.x.x:8000
+      REGISTRARD_ENABLE_TLS: true
+    volumes:
+    - registrar-data:/etc/registrar
+    - /var/run/docker.sock:/var/run/docker.sock

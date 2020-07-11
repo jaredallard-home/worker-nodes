@@ -91,7 +91,10 @@ func (w *Wireguard) StartClient(endpoint, ourIP string, k, pubk wgtypes.Key) err
 	}
 
 	pki := 5 * time.Second
-	_, globalCidr, err := net.ParseCIDR(ourIP + "/24")
+
+	// We set /16 here to allow for Kubernetes address space to be allowed to be routed
+	// through this device
+	_, globalCidr, err := net.ParseCIDR(ourIP + "/16")
 	if err != nil {
 		return err
 	}

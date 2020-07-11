@@ -142,7 +142,6 @@ func main() { //nolint:funlen,gocyclo
 		},
 		Action: func(c *cli.Context) error {
 			if !c.Bool("skip-wireguard-check") {
-				// TODO(jaredallard): This breaks windows support
 				b, err := ioutil.ReadFile("/proc/modules")
 				if err != nil {
 					return errors.Wrap(err, "failed to check for wireguard module, pass --skip-wireguard-check to disable")
@@ -220,7 +219,7 @@ func main() { //nolint:funlen,gocyclo
 					return errors.Wrap(err, "failed to parse returned server wireguard public key")
 				}
 
-				log.WithFields(log.Fields{"ip": resp.IpAddress, "key": k.PublicKey, "id": id}).
+				log.WithFields(log.Fields{"ip": resp.IpAddress, "public_key": k.PublicKey, "id": id}).
 					Infof("got registration information")
 
 				// we didn't find one to start with, so we write it to disk
