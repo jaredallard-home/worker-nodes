@@ -63,7 +63,7 @@ docker-build-init:
 .PHONY: docker-build-push
 docker-build-push:
 	@$(LOG) info "Building and push docker image"
-	docker buildx build --platform amd64,arm64 -t "jaredallard-home/registrar:$(APP_VERSION)" --push .
+	docker buildx build --platform amd64,arm64 -t "jaredallardhome/registrar:$(APP_VERSION)" --push .
 
 .PHONY: fmt
 fmt:

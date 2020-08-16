@@ -29,7 +29,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: registrard
-          image: jaredallard/registrar:latest
+          image: jaredallardhome/registrar:latest
           imagePullPolicy: Always
           env:
             - name: RANCHER_TOKEN
