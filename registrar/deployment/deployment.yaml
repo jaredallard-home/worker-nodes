@@ -17,63 +17,63 @@ spec:
     spec:
       serviceAccountName: registrard
       nodeSelector:
-        node-role.kubernetes.io/controlplane: 'true'
+        node-role.kubernetes.io/controlplane: "true"
       tolerations:
-      - key: node-role.kubernetes.io/etcd
-        operator: Equal
-        value: "true"
-        effect: NoExecute
-      - key: node-role.kubernetes.io/controlplane
-        operator: Equal
-        value: "true"
-        effect: NoSchedule
-      containers:
-      - name: registrard
-        image: jaredallard/registrar:latest
-        imagePullPolicy: Always
-        env:
-        - name: RANCHER_TOKEN
-          valueFrom:
-            secretKeyRef:
-              key: RANCHER_TOKEN
-              name: rancher
-        - name: REGISTRARD_TOKEN
-          valueFrom:
-            secretKeyRef:
-              key: REGISTRARD_TOKEN
-              name: registrard
-        - name: REGISTRARD_ENABLE_TLS
+        - key: node-role.kubernetes.io/etcd
+          operator: Equal
           value: "true"
-        - name: REGISTRARD_PEM_FILEPATH
-          value: /var/run/secrets/registrard.jaredallard.me/tls/service.pem
-        - name: REGISTRARD_KEY_FILEPATH
-          value: /var/run/secrets/registrard.jaredallard.me/tls/service.key
-        volumeMounts:
-        - name: tls
-          mountPath: "/var/run/secrets/registrard.jaredallard.me/tls"
-          readOnly: true
-        ports:
-        - name: grpc
-          containerPort: 8000
-        - name: wireguard
-          containerPort: 51820
-          protocol: UDP
-        securityContext:
-          privileged: true
-          runAsUser: 0
-          runAsNonRoot: false
-        resources:
-          limits:
-            cpu: 200m
-            memory: 100Mi
-          requests:
-            cpu: 100m
-            memory: 10Mi
+          effect: NoExecute
+        - key: node-role.kubernetes.io/controlplane
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      containers:
+        - name: registrard
+          image: jaredallard/registrar:latest
+          imagePullPolicy: Always
+          env:
+            - name: RANCHER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: RANCHER_TOKEN
+                  name: rancher
+            - name: RANCHER_HOST
+              value: "https://rancher.tritonjs.com"
+            - name: RANCHER_CLUSTER_ID
+              value: ""
+            - name: REGISTRARD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: REGISTRARD_TOKEN
+                  name: registrard
+            - name: REGISTRARD_ENABLE_TLS
+              value: "true"
+            - name: REGISTRARD_PEM_FILEPATH
+              value: /var/run/secrets/registrard.jaredallard.me/tls/service.pem
+            - name: REGISTRARD_KEY_FILEPATH
+              value: /var/run/secrets/registrard.jaredallard.me/tls/service.key
+          volumeMounts:
+            - name: tls
+              mountPath: "/var/run/secrets/registrard.jaredallard.me/tls"
+              readOnly: true
+          ports:
+            - name: grpc
+              containerPort: 8000
+          securityContext:
+            privileged: true
+            runAsUser: 0
+            runAsNonRoot: false
+          resources:
+            limits:
+              cpu: 200m
+              memory: 100Mi
+            requests:
+              cpu: 100m
+              memory: 10Mi
       volumes:
-      - name: tls
-        secret:
-          secretName: tls
-      hostNetwork: true
+        - name: tls
+          secret:
+            secretName: tls
 ---
 apiVersion: v1
 kind: Service
@@ -85,7 +85,7 @@ spec:
   selector:
     app: registrard
   ports:
-  - name: grpc
-    port: 8000
-    targetPort: grpc
-    protocol: TCP
+    - name: grpc
+      port: 8000
+      targetPort: grpc
+      protocol: TCP

@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/jaredallard-home/worker-nodes/registrar/api"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -17,7 +18,7 @@ type GRPCService struct {
 	srv *grpc.Server
 }
 
-func (s *GRPCService) Run(ctx context.Context) error { //nolint:funlen
+func (s *GRPCService) Run(ctx context.Context, log logrus.FieldLogger) error { //nolint:funlen
 	listAddr := ":" + strconv.Itoa(8000)
 	l, err := net.Listen("tcp", listAddr)
 	if err != nil {

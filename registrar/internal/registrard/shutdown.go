@@ -6,13 +6,15 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/sirupsen/logrus"
 )
 
 type ShutdownService struct {
 	c chan os.Signal
 }
 
-func (s *ShutdownService) Run(ctx context.Context) error {
+func (s *ShutdownService) Run(ctx context.Context, log logrus.FieldLogger) error {
 	// listen for interrupts and gracefully shutdown server
 	s.c = make(chan os.Signal, 10)
 	signal.Notify(s.c, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)

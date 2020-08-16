@@ -4,21 +4,30 @@
 #
 # Attmepts to create a Kubernetes friendly environment. Currently only supports BalenaOS.
 
-bind_mounts=("/etc/kubernetes" "/var/lib/rancher" "/var/lib/kubelet" "/etc/cni/net.d" "/opt/cni/bin" "/etc/ceph" "/var/lib/ceph:var-lib-ceph" "/var/lib/etcd")
+bind_mounts=(
+  "/etc/kubernetes"
+  "/var/lib/rancher"
+  "/var/lib/kubelet"
+  "/etc/cni/net.d"
+  "/opt/cni/bin"
+  "/etc/ceph"
+  "/var/lib/ceph:var-lib-ceph"
+  "/var/lib/etcd"
+)
 
 echo " :: Mounting / as rw"
 nsenter -t 1 -m sh -- -c "mount -o remount,rw /"
 
 for bm in "${bind_mounts[@]}"; do
   isMounted=$(nsenter -t 1 -m sh -- -c "mount | grep $bm")
-  if [[ -z "$isMounted" ]]; then
-    alt_src=$(awk -F ':' '{ print $1 }' <<< "$bm")
-    alt_name=$(awk -F ':' '{ print $2 }' <<< "$bm")
+  if [[ -z $isMounted ]]; then
+    alt_src=$(awk -F ':' '{ print $1 }' <<<"$bm")
+    alt_name=$(awk -F ':' '{ print $2 }' <<<"$bm")
 
     src="$bm"
     dir_name=$(basename "$bm")
 
-    if [[ -n "$alt_name" ]]; then
+    if [[ -n $alt_name ]]; then
       dir_name="$alt_name"
       src="$alt_src"
     fi
@@ -29,11 +38,11 @@ for bm in "${bind_mounts[@]}"; do
     nsenter -t 1 -m sh -- -c "mount --rbind '/mnt/data/$dir_name' '$src'"
     nsenter -t 1 -m sh -- -c "mount --make-rshared '$src'"
   fi
-done 
+done
 
 systemdUnitFile="/lib/systemd/system/balena.service"
 needsMountFlagsPatch=$(nsenter -t 1 -m sh -- -c "grep MountFlags=slave '$systemdUnitFile'")
-if [[ -n "$needsMountFlagsPatch" ]]; then
+if [[ -n $needsMountFlagsPatch ]]; then
   echo " :: Patching balena.service"
   nsenter -t 1 -m sh -- -c "sed -i 's/^MountFlags=slave/MountFlags=shared/' '$systemdUnitFile'"
   # This will restart this container, so we make sure that we do it only once.

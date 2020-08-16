@@ -16,11 +16,10 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/jaredallard-home/worker-nodes/registrar/api"
-	"github.com/jaredallard-home/worker-nodes/registrar/pkg/wghelper"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/tritonmedia/pkg/app"
 	"github.com/urfave/cli"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -54,9 +53,6 @@ func leaderMode(ctx context.Context, c *cli.Context) error { //nolint:funlen
 					os.Getenv("RANCHER_SERVER_TOKEN"),
 					"--etcd",
 					"--controlplane",
-					"--internal-address",
-					// TODO(jaredallard): need to detect this somehow....
-					"10.10.0.1",
 				},
 			},
 			&container.HostConfig{
@@ -94,40 +90,15 @@ func main() { //nolint:funlen,gocyclo
 	ctx := context.Background()
 
 	app := cli.App{
-		Name:  "registrar",
-		Usage: "Configure a device using a remote registrar server",
-		Authors: []cli.Author{
-			{
-				Name:  "Jared Allard",
-				Email: "jaredallard@outlook.com",
-			},
-		},
+		Name:    "registrar",
+		Usage:   "Configure a device using a remote registrar server",
+		Version: app.Version,
 		Flags: []cli.Flag{
-			cli.BoolFlag{
-				Name:  "skip-wireguard-check",
-				Usage: "Skip wireguard kernel module check",
-			},
 			cli.StringFlag{
 				Name:   "registrard-host",
 				Usage:  "Specify the registrard hostname",
 				EnvVar: "REGISTRARD_HOST",
 				Value:  "127.0.0.1:8000",
-			},
-			cli.BoolFlag{
-				Name:   "no-wireguard",
-				EnvVar: "NO_WIREGUARD",
-				Usage:  "Disable Wireguard Creation, may break things....",
-			},
-			cli.StringFlag{
-				Name:   "rancher-endpoint",
-				Usage:  "Rancher Endpoint",
-				EnvVar: "RANCHER_HOST",
-				Value:  "https://rancher.tritonjs.com",
-			},
-			cli.StringFlag{
-				Name:   "wireguard-endpoint",
-				Usage:  "Wireguard server endpoint",
-				EnvVar: "WIREGUARD_HOST",
 			},
 			cli.BoolFlag{
 				Name:   "no-agent",
@@ -157,14 +128,8 @@ func main() { //nolint:funlen,gocyclo
 			}
 
 			host := c.String("registrard-host")
-			wireguardHost := c.String("wireguard-endpoint")
-			rancherHost := c.String("rancher-endpoint")
 
-			if wireguardHost == "" {
-				wireguardHost = host
-			}
-
-			log.WithFields(log.Fields{"host": host, "wireguard": wireguardHost, "rancher": rancherHost}).
+			log.WithFields(log.Fields{"host": host}).
 				Info("registering device with registrar")
 
 			confDir := "/etc/registrar"
@@ -208,38 +173,6 @@ func main() { //nolint:funlen,gocyclo
 				return errors.Wrap(err, "failed to register devices")
 			}
 
-			if !c.Bool("no-wireguard") {
-				k, err := wgtypes.ParseKey(resp.Key)
-				if err != nil {
-					return errors.Wrap(err, "failed to parse returned wireguard key")
-				}
-
-				serverPub, err := wgtypes.ParseKey(resp.PublicKey)
-				if err != nil {
-					return errors.Wrap(err, "failed to parse returned server wireguard public key")
-				}
-
-				log.WithFields(log.Fields{"ip": resp.IpAddress, "public_key": k.PublicKey, "id": id}).
-					Infof("got registration information")
-
-				// we didn't find one to start with, so we write it to disk
-				if id == "" {
-					if err = ioutil.WriteFile(ipConfDir, []byte(resp.Id), 0600); err != nil {
-						log.Errorf("failed to save registration id")
-					}
-				}
-
-				w, err := wghelper.NewWireguard(nil)
-				if err != nil {
-					return errors.Wrap(err, "failed to create wireguard device")
-				}
-
-				err = w.StartClient(wireguardHost, resp.IpAddress, k, serverPub)
-				if err != nil {
-					return errors.Wrap(err, "failed to start wireguard client")
-				}
-			}
-
 			if c.Bool("no-agent") {
 				return nil
 			}
@@ -261,14 +194,10 @@ func main() { //nolint:funlen,gocyclo
 
 				args := []string{
 					"--server",
-					rancherHost,
+					resp.RancherHost,
 					"--token",
 					resp.RancherToken,
 					"--worker",
-				}
-
-				if !c.Bool("no-wireguard") {
-					args = append(args, "--internal-address", resp.IpAddress)
 				}
 
 				cont, err := cli.ContainerCreate(
@@ -311,8 +240,7 @@ func main() { //nolint:funlen,gocyclo
 
 	if err := app.Run(os.Args); err != nil {
 		log.WithError(err).Fatalf("failed to start")
+		// Stay up for an hour for debugging, if needed.
+		time.Sleep(time.Minute * 60)
 	}
-
-	// Stay up for an hour for debugging, if needed.
-	time.Sleep(time.Minute * 60)
 }

@@ -1,5 +1,6 @@
 ARG alpine_ver=3.12
-ARG golang_ver=1.14
+ARG golang_ver=1.15
+ARG VERSION
 FROM golang:${golang_ver}-alpine${alpine_ver} AS build
 WORKDIR /src/registrard
 
@@ -11,7 +12,9 @@ COPY go.mod go.sum Makefile ./
 RUN make dep
 
 COPY . .
-RUN make gobuild
+
+# Build our application
+RUN make build "APP_VERSION=${VERSION}"
 
 FROM alpine:${alpine_ver}
 

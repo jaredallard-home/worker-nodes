@@ -9,9 +9,9 @@ import (
 )
 
 func TestGetClusterRegistrationToken(t *testing.T) {
-	c := NewClient(os.Getenv("RANCHER_TOKEN"))
+	c := NewClient(os.Getenv("RANCHER_HOST"), os.Getenv("RANCHER_TOKEN"))
 
-	d, err := c.GetClusterRegistrationToken(context.TODO(), "")
+	d, err := c.GetClusterRegistrationToken(context.Background(), "")
 	if err != nil {
 		t.Error(err)
 		return

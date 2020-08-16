@@ -1,7 +1,0 @@
-apiVersion: registrar.jaredallard.me/v1alpha1
-kind: WireguardIPPool
-metadata:
-  name: default
-  namespace: registrard
-spec:
-  cidr: 10.10.0.1/24

@@ -19,8 +19,6 @@ func (rc *RegistrarClientset) RegistrarV1Alpha1Client() RegistrarV1Alpha1Interfa
 
 type RegistrarV1Alpha1Interface interface {
 	Devices(namespace string) DeviceInterface
-	WireguardIPs(namespace string) WireguardIPInterface
-	WireguardIPPools(namespace string) WireguardIPPoolInterface
 }
 
 type RegistrarV1Alpha1Client struct {
@@ -36,10 +34,6 @@ func NewForConfig(c *rest.Config) (*RegistrarClientset, error) {
 	v1alpha1.SchemeBuilder.Register(
 		&v1alpha1.DeviceList{},
 		&v1alpha1.Device{},
-		&v1alpha1.WireguardIPList{},
-		&v1alpha1.WireguardIPPoolList{},
-		&v1alpha1.WireguardIP{},
-		&v1alpha1.WireguardIPPool{},
 	)
 
 	if err := v1alpha1.AddToScheme(scheme.Scheme); err != nil {
@@ -62,19 +56,6 @@ func NewForConfig(c *rest.Config) (*RegistrarClientset, error) {
 
 func (c *RegistrarV1Alpha1Client) Devices(namespace string) DeviceInterface {
 	return &deviceClient{
-		client: c.client,
-		ns:     namespace,
-	}
-}
-
-func (c *RegistrarV1Alpha1Client) WireguardIPs(namespace string) WireguardIPInterface {
-	return &wireguardIPClient{
-		client: c.client,
-		ns:     namespace,
-	}
-}
-func (c *RegistrarV1Alpha1Client) WireguardIPPools(namespace string) WireguardIPPoolInterface {
-	return &wireguardIPPoolClient{
 		client: c.client,
 		ns:     namespace,
 	}
