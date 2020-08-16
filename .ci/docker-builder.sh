@@ -18,7 +18,7 @@ COMMIT_BRANCH="$CIRCLE_BRANCH"
 # Support Github Actions
 if [[ -n $GITHUB_WORKFLOW ]]; then
   COMMIT_SHA="$GITHUB_SHA"
-  COMMIT_BRANCH="${GITHUB_REF//refs\/heads\//}"
+  COMMIT_BRANCH="${GITHUB_HEAD_REF//refs\/heads\//}"
 fi
 
 appName="$(basename "$(pwd)")"
@@ -52,7 +52,10 @@ if [[ $COMMIT_BRANCH == "master" ]]; then
   TAGS+=("$VERSION" "latest")
 else
   # strip the branch name of invalid spec characters
-  TAGS+=("$VERSION-$COMMIT_SHA-branch.${COMMIT_BRANCH//[^a-zA-Z\-\.]/-}")
+  TAGS+=("$VERSION-branch.${COMMIT_BRANCH//[^a-zA-Z\-\.]/-}")
+
+  # TODO(jaredallard): Better support multiple images at somepoint?
+  echo "::set-env name=PREVIEW_IMAGE::$remote_image_name:$(cut -c 1-127 <<<"${TAGS[0]}")"
 fi
 
 for tag in "${TAGS[@]}"; do
