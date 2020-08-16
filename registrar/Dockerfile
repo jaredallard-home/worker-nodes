@@ -8,7 +8,7 @@ WORKDIR /src/registrard
 RUN apk add --no-cache make git bash
 
 # Only download and fetch dependencies when needed
-COPY go.mod go.sum Makefile ./
+COPY go.mod go.sum Makefile scripts/ ./
 RUN make dep
 
 COPY . .
