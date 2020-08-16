@@ -9,10 +9,10 @@ rules:
   # Used for leader election by the controller
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get", "update", "patch", "create","delete"]
+    verbs: ["get", "update", "patch", "create", "delete"]
   - apiGroups: ["registrar.jaredallard.me"]
-    resources: ["wireguardippools", "wireguardips", "devices"]
-    verbs: ["get","update","patch","create","delete","list"]
+    resources: ["devices"]
+    verbs: ["get", "update", "patch", "create", "delete", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: RoleBinding

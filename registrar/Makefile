@@ -1,64 +1,74 @@
 # go option
 GO             ?= go
-GOIMPORTS      ?= goimports
-JSONNETFMT     ?= jsonnetfmt
+SHELL          := /usr/bin/env bash
+GOOS           := $(shell go env GOOS)
+GOARCH         := $(shell go env GOARCH)
 PKG            := $(GO) mod download
-APP_VERSION    := 1.0.0-$(shell git rev-parse HEAD)
-LDFLAGS        := -w -s
+# TODO(jaredallard): infer from Git tag
+APP_VERSION    := $(shell git describe --match 'v[0-9]*' --tags --abbrev=0 --always HEAD)
+LDFLAGS        := -w -s -X github.com/tritonmedia/pkg/app.Version=$(APP_VERSION)
 GOFLAGS        :=
-GOPRIVATE      := 
-GOPROXY        := https://proxy.golang.org
-GO_EXTRA_FLAGS := -v -tags=or_dev
+GO_EXTRA_FLAGS := -v
 TAGS           :=
 BINDIR         := $(CURDIR)/bin
-BIN_NAME       := authz
 PKGDIR         := github.com/jaredallard-home/worker-nodes/registrar
 CGO_ENABLED    := 1
-TOOL_DEPS      := ${GO} ${GOIMPORTS} ${JSONNETFMT}
-BENCH_FLAGS    := -benchtime=10x
+BENCH_FLAGS    := "-bench=Bench $(BENCH_FLAGS)"
+TEST_TAGS      ?= tm_test
+LOG            := "$(CURDIR)/scripts/make-log-wrapper.sh"
 
 .PHONY: default
 default: build
 
-.PHONY: check_deps
-check_deps:
-	@true
+.PHONY: version
+version:
+	@echo $(APP_VERSION)
+
+.PHONY: release
+release:
+	@$(LOG) info "Building official release"
+	./scripts/gobin.sh github.com/goreleaser/goreleaser
 
 .PHONY: pre-commit
 pre-commit: fmt
 
 .PHONY: build
-build: gogenerate gobuild
+build: gobuild
 
 .PHONY: test
 test:
-	GOPROXY=$(GOPROXY) GOPRIVATE=$(GOPRIVATE) go test ./...
-
-.PHONY: docs
-docs:
-	@echo "Not done yet"
+	./scripts/test.sh
 
 .PHONY: dep
 dep:
-	@echo " ===> Installing dependencies via <=== "
-	GOPROXY=$(GOPROXY) GOPRIVATE=$(GOPRIVATE) $(PKG)
+	@$(LOG) info "Installing dependencies using '$(PKG)'"
+	$(PKG)
 
 .PHONY: gogenerate
-gogenerate: check_deps
-	GOPROXY=$(GOPROXY) GOPRIVATE=$(GOPRIVATE) $(GO) generate ./...
+gogenerate:
+	@$(LOG) info "Running 'go generate'"
+	$(GO) generate ./...
 
 .PHONY: gobuild
-gobuild: check_deps
-	@echo " ===> building releases in ./bin/... <=== "
-	mkdir -p $(BINDIR)
-	GOPROXY=$(GOPROXY) GOPRIVATE=$(GOPRIVATE) CGO_ENABLED=$(CGO_ENABLED) $(GO) build -o $(BINDIR)/ -ldflags "$(LDFLAGS)" $(GO_EXTRA_FLAGS) $(PKGDIR)/...
-.PHONY: docker-build
-docker-build:
-	DOCKER_BUILDKIT=1 docker buildx build --platform amd64,arm64 --ssh default -t jaredallard/registrar -f Dockerfile . --build-arg VERSION=${APP_VERSION} --push
+gobuild:
+	@$(LOG) info "Building releases into ./bin"
+	@mkdir -p $(BINDIR)
+	CGO_ENABLED=$(CGO_ENABLED) "$(GO)" build -o "$(BINDIR)/" -ldflags "$(LDFLAGS)" $(GO_EXTRA_FLAGS) "$(PKGDIR)/..."
+
+.PHONY: docker-build-init
+docker-build-init:
+	docker buildx create --use
+	docker run --rm --privileged docker/binfmt:66f9012c56a8316f9244ffd7622d7c21c1f6f28d
+
+.PHONY: docker-build-push
+docker-build-push:
+	@$(LOG) info "Building and push docker image"
+	docker buildx build --platform amd64,arm64 -t "jaredallardhome/registrar:$(APP_VERSION)" --push .
 
 .PHONY: fmt
 fmt:
-	@echo " ==> Running goimports <=="
-	find  . -path ./vendor -prune -o -type f -name '*.go' -print | xargs -n 1 ${GOIMPORTS} -w
-	@echo " ==> Running jsonnetfmt <=="
-	find . -name '*.jsonnet' | xargs -n 1 jsonnetfmt -i
+	@$(LOG) info "Running goimports"
+	find  . -path ./vendor -prune -o -type f -name '*.go' -print | xargs ./scripts/gobin.sh golang.org/x/tools/cmd/goimports -w
+	@$(LOG) info "Running shfmt"
+	./scripts/gobin.sh mvdan.cc/sh/v3/cmd/shfmt -l -w -s .
+

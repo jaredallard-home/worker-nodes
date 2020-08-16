@@ -10,24 +10,18 @@ message RegisterRequest {
   string id = 1;
 
   // authToken allows access to this endpoint
-  string authToken = 2;
+  string auth_token = 2;
 }
 
 message RegisterResponse {
   // ID becomes this device's unique ID
   string id = 1;
 
-  // Key is the wireguard key that has been generated for this device.
-  string key = 2;
-
   // RancherToken is the token used to register the node with Rancher.
-  string rancher_token = 3;
+  string rancher_token = 2;
 
-  // IPAddress is the IP that this node should be running as
-  string ip_address = 4;
-
-  // PublicKey is the server public key
-  string public_key = 5;
+  // RancherHost is the hostname used to talk to Rancher
+  string rancher_host = 3;
 }
 
 // Registrar is the registration service for new nodes

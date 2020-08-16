@@ -1,17 +1,21 @@
 ARG alpine_ver=3.12
-ARG golang_ver=1.14
+ARG golang_ver=1.15
+ARG VERSION
 FROM golang:${golang_ver}-alpine${alpine_ver} AS build
 WORKDIR /src/registrard
 
 # hadolint ignore=DL3018
-RUN apk add --no-cache make git
+RUN apk add --no-cache make git bash
 
 # Only download and fetch dependencies when needed
+COPY scripts/ ./scripts/
 COPY go.mod go.sum Makefile ./
 RUN make dep
 
 COPY . .
-RUN make gobuild
+
+# Build our application
+RUN make build "APP_VERSION=${VERSION}" CGO_ENABLED=0
 
 FROM alpine:${alpine_ver}
 

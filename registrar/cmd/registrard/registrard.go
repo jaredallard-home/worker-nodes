@@ -3,38 +3,43 @@ package main
 import (
 	"context"
 	"os"
+	"os/signal"
+	"syscall"
 
-	registard "github.com/jaredallard-home/worker-nodes/registrar/internal/registrard"
-	"github.com/jaredallard-home/worker-nodes/registrar/pkg/service"
-	log "github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/jaredallard-home/worker-nodes/registrar/internal/registrard"
+	"github.com/sirupsen/logrus"
+	"github.com/tritonmedia/pkg/app"
+	"github.com/tritonmedia/pkg/service"
+	"github.com/urfave/cli/v2"
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	log := logrus.New().WithContext(ctx)
+
 	app := cli.App{
-		Name:  "registrard",
-		Usage: "Launch a registrar server instance",
-		Authors: []cli.Author{
-			{
-				Name:  "Jared Allard",
-				Email: "jaredallard@outlook.com",
-			},
-		},
-		Action: func(c *cli.Context) error {
-			log.Info("starting registrard")
+		Name:    "registrar",
+		Version: app.Version,
+	}
+	app.Action = func(c *cli.Context) error {
+		r := service.NewServiceRunner(ctx, []service.Service{
+			&registrard.ShutdownService{},
+			&registrard.GRPCService{},
+		})
+		sigC := make(chan os.Signal)
 
-			ctx := context.Background()
+		// listen for signals that we want to cancel on, and cancel
+		// the context if one is passed
+		signal.Notify(sigC, os.Interrupt, syscall.SIGTERM)
+		go func() {
+			<-sigC
+			cancel()
+		}()
 
-			r := service.NewServiceRunner(ctx, []service.Service{
-				&registard.ShutdownService{},
-				&registard.GRPCService{},
-			})
-
-			return r.Run(ctx)
-		},
+		return r.Run(ctx, log)
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Fatalf("failed to start: %v", err)
+		log.Fatalf("failed to run: %v", err)
 	}
 }

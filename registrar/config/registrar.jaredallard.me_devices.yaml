@@ -31,28 +31,14 @@ spec:
         metadata:
           type: object
         spec:
-          properties:
-            secretRef:
-              description: SecretRef is the secret that contains all secret information
-                for this device
-              type: string
-            wireguardIPRef:
-              type: string
-          required:
-          - secretRef
-          - wireguardIPRef
           type: object
         status:
           properties:
-            publicKey:
-              description: PublicKey is the wireguard public key for this device
-              type: string
             registered:
               description: Registered denotes wether or not this device is considered
                 as being registered or not.
               type: boolean
           required:
-          - publicKey
           - registered
           type: object
       required:

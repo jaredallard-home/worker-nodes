@@ -102,8 +102,8 @@ type Client struct {
 	baseURL *url.URL
 }
 
-func NewClient(authKey string) *Client {
-	u, err := url.Parse("https://rancher.tritonjs.com")
+func NewClient(hostname, authKey string) *Client {
+	u, err := url.Parse(hostname)
 	if err != nil {
 		panic(err)
 	}
