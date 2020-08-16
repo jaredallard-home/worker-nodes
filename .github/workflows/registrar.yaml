@@ -23,11 +23,11 @@ jobs:
         uses: actions/cache@v2
         id: go-dep-cache
         with:
-          path: /home/worker/go/pkg
-          key: v1-${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          path: /go/pkg
+          key: v2-${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
-            v1-${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-            v1-${{ runner.os }}-go-
+            v2-${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+            v2-${{ runner.os }}-go-
       - name: Download Dependencies
         run: make dep
       - name: Run Tests
