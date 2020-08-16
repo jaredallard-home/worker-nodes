@@ -56,7 +56,7 @@ jobs:
       - name: Build and Push Docker Container
         env:
           IMAGE_PUSH_SECRET: ${{ secrets.DOCKER_IMAGE_PUSH }}
-        run: .ci/docker-builder.sh
+        run: ../.ci/docker-builder.sh
       - name: Notify of Preview Image
         if: github.event_name == 'pull_request' && env.PREVIEW_IMAGE != ''
         uses: unsplash/comment-on-pr@master
