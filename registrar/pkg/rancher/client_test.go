@@ -1,51 +1,45 @@
 package rancher
 
-import (
-	"context"
-	"os"
-	"testing"
+// TODO(jaredallard): renenable when automatable
+// func TestGetClusterRegistrationToken(t *testing.T) {
+// 	c := NewClient(os.Getenv("RANCHER_HOST"), os.Getenv("RANCHER_TOKEN"))
+// 	ctx := context.Background()
 
-	"github.com/davecgh/go-spew/spew"
-)
+// 	d, err := c.GetClusterRegistrationToken(ctx, "")
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
 
-func TestGetClusterRegistrationToken(t *testing.T) {
-	c := NewClient(os.Getenv("RANCHER_HOST"), os.Getenv("RANCHER_TOKEN"))
+// 	if len(d) == 0 {
+// 		spew.Dump(d)
+// 		t.Errorf("expected to get > 0 clusterregistrationtokens, but got %d", len(d))
+// 		return
+// 	}
 
-	d, err := c.GetClusterRegistrationToken(context.Background(), "")
-	if err != nil {
-		t.Error(err)
-		return
-	}
+// 	if d[0].Token == "" {
+// 		t.Errorf("expected to get a token, but didn't")
+// 	}
 
-	if len(d) == 0 {
-		spew.Dump(d)
-		t.Errorf("expected to get > 0 clusterregistrationtokens, but got %d", len(d))
-		return
-	}
+// 	d, err = c.GetClusterRegistrationToken(ctx, "c-l7jc8")
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
 
-	if d[0].Token == "" {
-		t.Errorf("expected to get a token, but didn't")
-	}
+// 	if len(d) == 0 {
+// 		spew.Dump(d)
+// 		t.Errorf("expected to get > 0 clusterregistrationtokens, but got %d (filter)", len(d))
+// 		return
+// 	}
 
-	d, err = c.GetClusterRegistrationToken(context.TODO(), "c-l7jc8")
-	if err != nil {
-		t.Error(err)
-		return
-	}
+// 	if d[0].Token == "" {
+// 		t.Errorf("expected to get a token, but didn't (filter)")
+// 		return
+// 	}
 
-	if len(d) == 0 {
-		spew.Dump(d)
-		t.Errorf("expected to get > 0 clusterregistrationtokens, but got %d (filter)", len(d))
-		return
-	}
-
-	if d[0].Token == "" {
-		t.Errorf("expected to get a token, but didn't (filter)")
-		return
-	}
-
-	if d[0].ClusterID != "c-l7jc8" {
-		t.Errorf("expected to get filtered clusterId, but go one that isn't matching the filter: %s", d[0].ClusterID)
-		return
-	}
-}
+// 	if d[0].ClusterID != "c-l7jc8" {
+// 		t.Errorf("expected to get filtered clusterId, but go one that isn't matching the filter: %s", d[0].ClusterID)
+// 		return
+// 	}
+// }
