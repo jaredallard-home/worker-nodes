@@ -1,4 +1,4 @@
-name: "Registrar"
+name: "registrar"
 on:
   pull_request: {}
   push:
@@ -15,6 +15,7 @@ jobs:
         working-directory: registrar
     steps:
       - name: Download OS Dependencies
+        working-directory: ./
         run: apk add --no-cache git make bash curl tar gcc libc-dev
       - name: Checkout
         uses: actions/checkout@v2
