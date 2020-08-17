@@ -117,20 +117,9 @@ func (s *Server) Register(ctx context.Context, r *api.RegisterRequest) (*api.Reg
 		return nil, errors.New("failed to get device")
 	}
 
-	// TODO(jaredallard): fix this hardcoded ID
-	tr, err := s.r.GetClusterRegistrationToken(ctx, os.Getenv("RANCHER_CLUSTER_ID"))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get rancher token")
-	}
-
-	// TODO(jaredallard): we should create one then
-	if len(tr) == 0 {
-		return nil, fmt.Errorf("no cluster registration tokens available for specified rancher cluster")
-	}
-
 	resp.Id = string(d.ObjectMeta.UID)
-	resp.ClusterToken = tr[0].Token
-	resp.ClusterHost = os.Getenv("RANCHER_HOST")
+	resp.ClusterToken = os.Getenv("CLUSTER_TOKEN")
+	resp.ClusterHost = os.Getenv("CLUSTER_HOST")
 
 	return resp, nil
 }
