@@ -14,10 +14,25 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/tritonmedia/pkg/app"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
+
+// copyFile is a suitable file copier for small files
+func copyFile(src, dest string) error {
+	f, err := os.Stat(src)
+	if err != nil {
+		return errors.Wrap(err, "failed to stat src")
+	}
+
+	b, err := ioutil.ReadFile(src)
+	if err != nil {
+		return errors.Wrap(err, "failed to read src")
+	}
+
+	return errors.Wrap(ioutil.WriteFile(dest, b, f.Mode()), "failed to copy src to dest")
+}
 
 func leaderMode(ctx context.Context, c *cli.Context) error { //nolint:funlen
 	cmd := exec.Command("bash", "/tmp/k3s-install.sh")
@@ -25,8 +40,9 @@ func leaderMode(ctx context.Context, c *cli.Context) error { //nolint:funlen
 		os.Environ(),
 		"INSTALL_K3S_SKIP_ENABLE=true",
 		"INSTALL_K3S_SKIP_START=true",
+
+		// this installs it onto the host OS
 		"INSTALL_K3S_BIN_DIR=/host/usr/local/bin",
-		"INSTALL_K3S_SYSTEMD_DIR=/host/etc/systemd/system",
 	)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
@@ -34,7 +50,14 @@ func leaderMode(ctx context.Context, c *cli.Context) error { //nolint:funlen
 		return errors.Wrap(err, "failed to start k3s install")
 	}
 
-	return errors.Wrap(cmd.Wait(), "failed to install k3s")
+	if err := cmd.Wait(); err != nil {
+		return errors.Wrap(err, "failed to install k3s")
+	}
+
+	return errors.Wrap(
+		copyFile("/opt/registrar/systemd/k3s-server.service", "/host/etc/systemd/system/k3s.service"),
+		"failed to copy systemd unit file",
+	)
 }
 
 func agentMode(ctx context.Context, resp *api.RegisterResponse) error {
@@ -44,13 +67,22 @@ func agentMode(ctx context.Context, resp *api.RegisterResponse) error {
 		"INSTALL_K3S_SKIP_ENABLE=true",
 		"INSTALL_K3S_SKIP_START=true",
 		"INSTALL_K3S_BIN_DIR=/host/usr/local/bin",
-		"INSTALL_K3S_SYSTEMD_DIR=/host/etc/systemd/system",
-		"K3S_URL=https://myserver:6443",
-		"K3S_TOKEN=mynodetoken",
+		"K3S_URL="+resp.ClusterHost,
+		"K3S_TOKEN="+resp.ClusterToken,
 	)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
-	return errors.Wrap(cmd.Wait(), "failed to install k3s")
+	if err := cmd.Start(); err != nil {
+		return errors.Wrap(err, "failed to start k3s install")
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return errors.Wrap(err, "failed to install k3s")
+	}
+	return errors.Wrap(
+		copyFile("/opt/registrar/systemd/k3s-agent.service", "/host/etc/systemd/system/k3s-agent.service"),
+		"failed to copy systemd unit file",
+	)
 }
 
 func main() { //nolint:funlen,gocyclo
@@ -61,26 +93,26 @@ func main() { //nolint:funlen,gocyclo
 		Usage:   "Configure a device using a remote registrar server",
 		Version: app.Version,
 		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:   "registrard-host",
-				Usage:  "Specify the registrard hostname",
-				EnvVar: "REGISTRARD_HOST",
-				Value:  "127.0.0.1:8000",
+			&cli.StringFlag{
+				Name:    "registrard-host",
+				Usage:   "Specify the registrard hostname",
+				EnvVars: []string{"REGISTRARD_HOST"},
+				Value:   "127.0.0.1:8000",
 			},
-			cli.BoolFlag{
-				Name:   "leader-mode",
-				Usage:  "Run a node in leader mode.",
-				EnvVar: "LEADER_MODE",
+			&cli.BoolFlag{
+				Name:    "leader-mode",
+				Usage:   "Run a node in leader mode.",
+				EnvVars: []string{"LEADER_MODE"},
 			},
-			cli.BoolFlag{
-				Name:   "registrard-enable-tls",
-				Usage:  "Enable TLS when talking to registrard",
-				EnvVar: "REGISTRARD_ENABLE_TLS",
+			&cli.BoolFlag{
+				Name:    "registrard-enable-tls",
+				Usage:   "Enable TLS when talking to registrard",
+				EnvVars: []string{"REGISTRARD_ENABLE_TLS"},
 			},
-			cli.StringFlag{
-				Name:   "registrard-token",
-				Usage:  "registrard auth token",
-				EnvVar: "REGISTRARD_TOKEN",
+			&cli.StringFlag{
+				Name:    "registrard-token",
+				Usage:   "registrard auth token",
+				EnvVars: []string{"REGISTRARD_TOKEN"},
 			},
 		},
 		Action: func(c *cli.Context) error {

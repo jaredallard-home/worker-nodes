@@ -27,5 +27,6 @@ COPY ca.crt /usr/local/share/ca-certificates/registrard-ca.crt
 RUN update-ca-certificates
 
 COPY --from=build /src/registrard/bin/* /usr/local/bin/
+COPY ./contrib/systemd/* /opt/registrar/systemd/
 
 CMD [ "/usr/local/bin/registrard" ]
