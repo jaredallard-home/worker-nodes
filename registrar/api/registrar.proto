@@ -17,11 +17,11 @@ message RegisterResponse {
   // ID becomes this device's unique ID
   string id = 1;
 
-  // RancherToken is the token used to register the node with Rancher.
-  string rancher_token = 2;
+  // ClusterToken is an auth token used for getting access to the cluster
+  string cluster_token = 2;
 
-  // RancherHost is the hostname used to talk to Rancher
-  string rancher_host = 3;
+  // ClusterHost is the resolveable (anywhere) host of the cluster
+  string cluster_host = 3;
 }
 
 // Registrar is the registration service for new nodes
