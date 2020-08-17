@@ -85,6 +85,7 @@ func main() { //nolint:funlen,gocyclo
 		},
 		Action: func(c *cli.Context) error {
 			if _, err := os.Stat("/tmp/k3s-install.sh"); os.IsNotExist(err) {
+				_ = os.Mkdir("/run/systemd", 0777)
 				// TODO(jaredallard): move off of this one day
 				log.Info("fetching k3s install script")
 				resp, err := http.Get("https://raw.githubusercontent.com/rancher/k3s/master/install.sh")
