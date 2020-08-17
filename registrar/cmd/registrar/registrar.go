@@ -30,6 +30,10 @@ func leaderMode(ctx context.Context, c *cli.Context) error { //nolint:funlen
 	)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
+	if err := cmd.Start(); err != nil {
+		return errors.Wrap(err, "failed to start k3s install")
+	}
+
 	return errors.Wrap(cmd.Wait(), "failed to install k3s")
 }
 
@@ -80,20 +84,23 @@ func main() { //nolint:funlen,gocyclo
 			},
 		},
 		Action: func(c *cli.Context) error {
-			// TODO(jaredallard): move off of this one day
-			resp, err := http.Get("https://raw.githubusercontent.com/rancher/k3s/master/install.sh")
-			if err != nil {
-				return errors.Wrap(err, "failed to download k3s install script")
-			}
-			defer resp.Body.Close()
+			if _, err := os.Stat("/tmp/k3s-install.sh"); os.IsNotExist(err) {
+				// TODO(jaredallard): move off of this one day
+				log.Info("fetching k3s install script")
+				resp, err := http.Get("https://raw.githubusercontent.com/rancher/k3s/master/install.sh")
+				if err != nil {
+					return errors.Wrap(err, "failed to download k3s install script")
+				}
+				defer resp.Body.Close()
 
-			b, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				return errors.Wrap(err, "failed to read install script from remote")
-			}
+				b, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					return errors.Wrap(err, "failed to read install script from remote")
+				}
 
-			if err := ioutil.WriteFile("/tmp/k3s-install.sh", b, 0755); err != nil {
-				return errors.Wrap(err, "failed to write install script")
+				if err := ioutil.WriteFile("/tmp/k3s-install.sh", b, 0755); err != nil {
+					return errors.Wrap(err, "failed to write install script")
+				}
 			}
 
 			if c.Bool("leader-mode") {
