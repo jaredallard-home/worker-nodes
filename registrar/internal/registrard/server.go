@@ -129,8 +129,8 @@ func (s *Server) Register(ctx context.Context, r *api.RegisterRequest) (*api.Reg
 	}
 
 	resp.Id = string(d.ObjectMeta.UID)
-	resp.RancherToken = tr[0].Token
-	resp.RancherHost = os.Getenv("RANCHER_HOST")
+	resp.ClusterToken = tr[0].Token
+	resp.ClusterHost = os.Getenv("RANCHER_HOST")
 
 	return resp, nil
 }
