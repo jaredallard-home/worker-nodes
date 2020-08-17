@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/jaredallard-home/worker-nodes/registrar/api"
@@ -34,24 +35,48 @@ func copyFile(src, dest string) error {
 	return errors.Wrap(ioutil.WriteFile(dest, b, f.Mode()), "failed to copy src to dest")
 }
 
-func leaderMode(ctx context.Context, c *cli.Context) error { //nolint:funlen
-	cmd := exec.Command("bash", "/tmp/k3s-install.sh")
-	cmd.Env = append(
-		os.Environ(),
-		"INSTALL_K3S_SKIP_ENABLE=true",
-		"INSTALL_K3S_SKIP_START=true",
-
-		// this installs it onto the host OS
-		"INSTALL_K3S_BIN_DIR=/host/usr/local/bin",
-	)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	if err := cmd.Start(); err != nil {
-		return errors.Wrap(err, "failed to start k3s install")
+func installK3S(ctx context.Context) error {
+	k3sBin := "/host/usr/local/bin/k3s"
+	if _, err := os.Stat(k3sBin); !os.IsNotExist(err) {
+		// k3s already exists, skip...
+		// TODO(jaredallard): checksum validation and all of that would be nice
+		return nil
 	}
 
-	if err := cmd.Wait(); err != nil {
-		return errors.Wrap(err, "failed to install k3s")
+	downloadSuffix := ""
+	switch runtime.GOARCH {
+	case "arm":
+		downloadSuffix = "-armhf"
+	case "amd64":
+		// we don't set a suffix for amd64
+	default:
+		downloadSuffix = "-" + runtime.GOARCH
+	}
+
+	url := "https://github.com/rancher/k3s/releases/download/v1.18.8%2Bk3s1/k3s" + downloadSuffix
+	log.WithFields(log.Fields{"url": url, "arch": runtime.GOARCH}).Info("downloading k3s")
+	r, err := http.Get(url)
+	if err != nil {
+		return errors.Wrap(err, "failed to download k3s")
+	}
+	defer r.Body.Close()
+
+	f, err := os.Create(k3sBin)
+	if err != nil {
+		return errors.Wrap(err, "failed to open k3s")
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(f, r.Body); err != nil {
+		return errors.Wrap(err, "failed to download k3s")
+	}
+
+	return errors.Wrap(os.Chmod(k3sBin, 0777), "failed to +x k3s")
+}
+
+func leaderMode(ctx context.Context, c *cli.Context) error { //nolint:funlen
+	if err := installK3S(ctx); err != nil {
+		return err
 	}
 
 	return errors.Wrap(
@@ -61,24 +86,10 @@ func leaderMode(ctx context.Context, c *cli.Context) error { //nolint:funlen
 }
 
 func agentMode(ctx context.Context, resp *api.RegisterResponse) error {
-	cmd := exec.Command("bash", "/tmp/k3s-install.sh")
-	cmd.Env = append(
-		os.Environ(),
-		"INSTALL_K3S_SKIP_ENABLE=true",
-		"INSTALL_K3S_SKIP_START=true",
-		"INSTALL_K3S_BIN_DIR=/host/usr/local/bin",
-		"K3S_URL="+resp.ClusterHost,
-		"K3S_TOKEN="+resp.ClusterToken,
-	)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	if err := cmd.Start(); err != nil {
-		return errors.Wrap(err, "failed to start k3s install")
+	if err := installK3S(ctx); err != nil {
+		return err
 	}
 
-	if err := cmd.Wait(); err != nil {
-		return errors.Wrap(err, "failed to install k3s")
-	}
 	return errors.Wrap(
 		copyFile("/opt/registrar/systemd/k3s-agent.service", "/host/etc/systemd/system/k3s-agent.service"),
 		"failed to copy systemd unit file",
@@ -116,26 +127,6 @@ func main() { //nolint:funlen,gocyclo
 			},
 		},
 		Action: func(c *cli.Context) error {
-			if _, err := os.Stat("/tmp/k3s-install.sh"); os.IsNotExist(err) {
-				_ = os.Mkdir("/run/systemd", 0777)
-				// TODO(jaredallard): move off of this one day
-				log.Info("fetching k3s install script")
-				resp, err := http.Get("https://raw.githubusercontent.com/rancher/k3s/master/install.sh")
-				if err != nil {
-					return errors.Wrap(err, "failed to download k3s install script")
-				}
-				defer resp.Body.Close()
-
-				b, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-					return errors.Wrap(err, "failed to read install script from remote")
-				}
-
-				if err := ioutil.WriteFile("/tmp/k3s-install.sh", b, 0755); err != nil {
-					return errors.Wrap(err, "failed to write install script")
-				}
-			}
-
 			if c.Bool("leader-mode") {
 				return leaderMode(ctx, c)
 			}
