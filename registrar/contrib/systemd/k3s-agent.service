@@ -9,6 +9,7 @@ WantedBy=multi-user.target
 [Service]
 Type=notify
 KillMode=process
+EnvironmentFile=/etc/registrar/k3s
 Delegate=yes
 # Having non-zero Limits causes performance problems due to accounting overhead
 # in the kernel. We recommend using cgroups to do container-local accounting.
@@ -21,4 +22,4 @@ Restart=always
 RestartSec=5s
 ExecStartPre=/sbin/modprobe br_netfilter
 ExecStartPre=/sbin/modprobe overlay
-ExecStart=/usr/local/bin/k3s server --docker --disable traefik --disable local-storage --disable servicelb
+ExecStart=/usr/local/bin/k3s agent --docker

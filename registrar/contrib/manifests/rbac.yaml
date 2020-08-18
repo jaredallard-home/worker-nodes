@@ -2,7 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: Role
 metadata:
   name: registrard
-  namespace: registrard
+  namespace: registrar
   labels:
     app: registrard
 rules:
@@ -18,7 +18,7 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: RoleBinding
 metadata:
   name: registrard
-  namespace: registrard
+  namespace: registrar
   labels:
     app: registrard
 roleRef:
@@ -29,12 +29,12 @@ subjects:
   - apiGroup: ""
     kind: ServiceAccount
     name: registrard
-    namespace: registrard
+    namespace: registrar
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: registrard
-  namespace: registrard
+  namespace: registrar
   labels:
     app: registrard

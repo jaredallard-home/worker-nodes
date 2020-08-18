@@ -76,7 +76,7 @@ func (s *Server) createDevice(ctx context.Context, namespace string, r *api.Regi
 // Register registers a new device into the wireguard network.
 // TODO(jaredallard): GC when peer is not added fully
 func (s *Server) Register(ctx context.Context, r *api.RegisterRequest) (*api.RegisterResponse, error) {
-	namespace := "registrard"
+	namespace := "registrar"
 	userTokenByte := []byte(r.AuthToken)
 
 	// we need to check if the auth token is the correct length

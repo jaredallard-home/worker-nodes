@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -90,6 +91,14 @@ func agentMode(ctx context.Context, resp *api.RegisterResponse) error {
 		return err
 	}
 
+	log.Info("generating k3s env config")
+
+	conf := fmt.Sprintf("K3S_URL=%s\nK3S_TOKEN=%s\n", resp.ClusterHost, resp.ClusterToken)
+
+	if err := ioutil.WriteFile("/host/etc/registrar/k3s", []byte(conf), 0600); err != nil {
+		return errors.Wrap(err, "failed to write k3s config to host")
+	}
+
 	return errors.Wrap(
 		copyFile("/opt/registrar/systemd/k3s-agent.service", "/host/etc/systemd/system/k3s-agent.service"),
 		"failed to copy systemd unit file",
@@ -136,7 +145,7 @@ func main() { //nolint:funlen,gocyclo
 			log.WithFields(log.Fields{"host": host}).
 				Info("registering device with registrar")
 
-			confDir := "/etc/registrar"
+			confDir := "/host/etc/registrar"
 			ipConfDir := filepath.Join(confDir, "id")
 			if _, err := os.Stat(confDir); err != nil {
 				err := os.MkdirAll(confDir, 0755)

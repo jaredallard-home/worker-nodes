@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: registrar-tritonjs-com
+  namespace: registrar
+spec:
+  # Secret names are always required.
+  secretName: tls
+  keySize: 4096
+  dnsNames:
+    - registrar.tritonjs.com
+  issuerRef:
+    name: main
+    kind: ClusterIssuer

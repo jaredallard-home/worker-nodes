@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: registrard
-  namespace: registrard
+  namespace: registrar
   labels:
     app: registrard
 spec:
@@ -16,31 +16,23 @@ spec:
         app: registrard
     spec:
       serviceAccountName: registrard
-      nodeSelector:
-        node-role.kubernetes.io/controlplane: "true"
       tolerations:
-        - key: node-role.kubernetes.io/etcd
-          operator: Equal
-          value: "true"
+        - operator: Exists
           effect: NoExecute
-        - key: node-role.kubernetes.io/controlplane
-          operator: Equal
-          value: "true"
+        - operator: Exists
           effect: NoSchedule
       containers:
         - name: registrard
           image: jaredallardhome/registrar:latest
           imagePullPolicy: Always
           env:
-            - name: RANCHER_TOKEN
+            - name: CLUSTER_TOKEN
               valueFrom:
                 secretKeyRef:
-                  key: RANCHER_TOKEN
-                  name: rancher
-            - name: RANCHER_HOST
-              value: "https://rancher.tritonjs.com"
-            - name: RANCHER_CLUSTER_ID
-              value: ""
+                  key: CLUSTER_TOKEN
+                  name: registrard
+            - name: CLUSTER_HOST
+              value: "https://kubernetes.tritonjs.com:6443"
             - name: REGISTRARD_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -49,9 +41,9 @@ spec:
             - name: REGISTRARD_ENABLE_TLS
               value: "true"
             - name: REGISTRARD_PEM_FILEPATH
-              value: /var/run/secrets/registrard.jaredallard.me/tls/service.pem
+              value: /var/run/secrets/registrard.jaredallard.me/tls/tls.crt
             - name: REGISTRARD_KEY_FILEPATH
-              value: /var/run/secrets/registrard.jaredallard.me/tls/service.key
+              value: /var/run/secrets/registrard.jaredallard.me/tls/tls.key
           volumeMounts:
             - name: tls
               mountPath: "/var/run/secrets/registrard.jaredallard.me/tls"
@@ -79,7 +71,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: registrard
-  namespace: registrard
+  namespace: registrar
 spec:
   type: LoadBalancer
   selector:
