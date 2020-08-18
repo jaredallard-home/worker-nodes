@@ -8,13 +8,18 @@ We use WireGuard to bridge all of our devices together into a single vxlan, and 
 
 ## Instructions
 
+Creating `registrard` secret:
+
+````bash
+$ kubectl create secret --namespace registrar generic --from-literal="REGISTRARD_TOKEN=$(base64 /dev/urandom | tr -d '/+' | dd bs=128 count=1 2>/dev/null)" --from-literal="CLUSTER_TOKEN=<from /var/lib/rancher/k3s/server/node-token on server>" registrard
+
 ### Creating a Server Node
 
 There's currently a "chicken" and an egg problem when it comes to provisioning a new Kubernetes cluster, which is telling Kubernetes to run and publish the WireGuard IP. However, we create WireGuard using `registrard`. To get around we temporarily create a 10.10.0.1/24 address, which registrar will clean up when it runs.
 
 ```bash
 sudo ip addr add 10.10.0.1/24 dev lo
-```
+````
 
 Now we need to run `registrard`, you can do this:
 
